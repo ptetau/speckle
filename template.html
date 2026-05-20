@@ -5,94 +5,275 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ .Title }}</title>
   <style>
-    :root { color-scheme: light dark; }
-    * { box-sizing: border-box; }
-    body {
-      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      max-width: 880px; margin: 2rem auto; padding: 0 1rem;
-      color: #1a1a1a; background: #fafaf7;
-    }
-    h1 { font-size: 1.75rem; margin: 0 0 1.5rem; }
-    section.spec-section {
-      border: 1px solid #ddd; border-radius: 8px;
-      padding: 1rem 1.25rem; margin: 0 0 1rem; background: #fff;
-    }
-    section.spec-section h2 { font-size: 1.2rem; margin: 0 0 .5rem; }
-    .body { color: #333; margin: 0 0 1rem; }
-    .body p { margin: 0 0 .5rem; }
-    .body code { background: #f0eee6; padding: 0 .25em; border-radius: 3px; }
-    .decision {
-      border-left: 3px solid #c9c9b8;
-      padding: .5rem 0 .5rem .75rem;
-      margin: 1rem 0;
-    }
-    .decision-prompt { font-weight: 600; margin-bottom: .5rem; }
-    .options { display: grid; gap: .5rem; }
-    .option {
-      border: 1px solid #ccc; border-radius: 6px; padding: .75rem;
-      background: #fcfcf8; cursor: pointer; display: block;
-    }
-    .option:hover { border-color: #888; }
-    .option input { margin-right: .5rem; }
-    .option.selected {
-      border-color: #2c7cbb;
-      box-shadow: 0 0 0 2px rgba(44, 124, 187, 0.2);
-      background: #f3f9ff;
-    }
-    .option-label { font-weight: 600; }
-    .option-description { color: #555; font-size: .92rem; margin: .25rem 0 0; }
-    .preview { margin-top: .5rem; }
-    .preview pre {
-      background: #f4f4ee; border-radius: 4px;
-      padding: .5rem .75rem; overflow: auto; font-size: .85rem;
-      margin: 0;
-    }
-    .preview iframe {
-      width: 100%; min-height: 140px;
-      border: 1px solid #ddd; border-radius: 4px; background: #fff;
-    }
-    details.comment { margin: .5rem 0 0; }
-    details.comment summary {
-      cursor: pointer; color: #2c7cbb; font-size: .9rem;
-      user-select: none;
-    }
-    details.comment textarea {
-      width: 100%; min-height: 4em; margin-top: .5rem;
-      font: inherit; padding: .5rem; border-radius: 4px;
-      border: 1px solid #ccc;
-    }
-    #notes {
-      width: 100%; min-height: 8em; font: inherit;
-      padding: .75rem; border-radius: 6px; border: 1px solid #ccc;
-    }
-    #submit-row { margin: 2rem 0; display: flex; gap: 1rem; align-items: center; }
-    button#submit {
-      background: #2c7cbb; color: white; border: 0;
-      padding: .75rem 1.5rem; font: inherit; font-weight: 600;
-      border-radius: 6px; cursor: pointer;
-    }
-    button#submit:hover { background: #235e8e; }
-    button#submit[disabled] { background: #aaa; cursor: not-allowed; }
-    #banner {
-      padding: .75rem 1rem; border-radius: 6px;
-      background: #fff4d6; border: 1px solid #e2c763;
-      margin-bottom: 1rem; display: none;
+    /* ---------- Design tokens ---------- */
+    :root {
+      color-scheme: light dark;
+      --bg:           #faf7f2;
+      --bg-elev:     #ffffff;
+      --bg-soft:     #f4efe5;
+      --ink:         #1f1d1a;
+      --ink-muted:   #6b665d;
+      --line:        #e6e0d3;
+      --line-strong: #d4ccba;
+      --accent:      #2c6fbb;
+      --accent-deep: #1d4f88;
+      --accent-soft: #e5edf8;
+      --accent-glow: rgba(44, 111, 187, .18);
+      --rose:        #c25a78;
+      --shadow-sm:   0 1px 2px rgba(38, 30, 18, .04), 0 1px 1px rgba(38, 30, 18, .03);
+      --shadow-md:   0 4px 14px rgba(38, 30, 18, .06), 0 1px 2px rgba(38, 30, 18, .04);
+      --radius:      10px;
+      --radius-sm:   6px;
     }
     @media (prefers-color-scheme: dark) {
-      body { background: #1c1c1a; color: #eee; }
-      section.spec-section { background: #252523; border-color: #3a3a36; }
-      .option { background: #1f1f1d; border-color: #3a3a36; }
-      .option.selected { background: #1a3147; border-color: #4ea2e0; }
-      .preview pre, .body code { background: #2a2a27; }
-      details.comment textarea, #notes {
-        background: #1f1f1d; color: #eee; border-color: #3a3a36;
+      :root {
+        --bg:           #1a1816;
+        --bg-elev:     #242220;
+        --bg-soft:     #2d2a26;
+        --ink:         #ece8e0;
+        --ink-muted:   #a39d8f;
+        --line:        #38332c;
+        --line-strong: #4a443a;
+        --accent:      #6aa3e0;
+        --accent-deep: #4d86c4;
+        --accent-soft: #1f2e44;
+        --accent-glow: rgba(106, 163, 224, .22);
+        --rose:        #e08aa0;
+        --shadow-sm:   0 1px 2px rgba(0, 0, 0, .35);
+        --shadow-md:   0 6px 18px rgba(0, 0, 0, .35), 0 1px 2px rgba(0, 0, 0, .25);
       }
-      #banner { background: #3a330e; border-color: #7c6a26; color: #fbe9a1; }
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    body {
+      font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Inter",
+            "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      font-feature-settings: "cv11", "ss01", "ss03";
+      letter-spacing: -0.005em;
+      max-width: 880px;
+      margin: 3rem auto;
+      padding: 0 1.25rem;
+      color: var(--ink);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    /* ---------- Focus visibility (a11y) ---------- */
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+      margin: 0 0 2rem;
+      text-wrap: balance;
+      font-weight: 700;
+    }
+    h2 {
+      font-size: 1.2rem;
+      line-height: 1.3;
+      letter-spacing: -0.015em;
+      margin: 0 0 .75rem;
+      font-weight: 650;
+      text-wrap: balance;
+    }
+
+    section.spec-section {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 1.5rem 1.75rem;
+      margin: 0 0 1rem;
+      background: var(--bg-elev);
+      box-shadow: var(--shadow-sm);
+    }
+    .body {
+      color: var(--ink);
+      margin: 0 0 1.25rem;
+    }
+    .body p { margin: 0 0 .5rem; }
+    .body p:last-child { margin-bottom: 0; }
+    .body code {
+      background: var(--bg-soft);
+      padding: 0.05em .35em;
+      border-radius: 4px;
+      font: .9em / 1 ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, monospace;
+    }
+
+    .decision {
+      border-left: 3px solid var(--line-strong);
+      padding: .25rem 0 .25rem 1rem;
+      margin: 1.25rem 0;
+    }
+    .decision-prompt {
+      font-weight: 600;
+      letter-spacing: -0.005em;
+      margin-bottom: .65rem;
+      color: var(--ink);
+    }
+
+    .options { display: grid; gap: .6rem; }
+    .option {
+      position: relative;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      padding: .9rem 1rem;
+      background: var(--bg-elev);
+      cursor: pointer;
+      display: block;
+      transition: border-color .15s ease, box-shadow .15s ease,
+                  background .15s ease, transform .15s ease;
+    }
+    .option:hover {
+      border-color: var(--line-strong);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-sm);
+    }
+    .option:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+      outline: none;
+    }
+    .option input[type=radio] {
+      margin-right: .5rem;
+      accent-color: var(--accent);
+      vertical-align: top;
+      margin-top: .25rem;
+    }
+    .option.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+      background: var(--accent-soft);
+    }
+    .option-label {
+      font-weight: 600;
+      letter-spacing: -0.005em;
+    }
+    .option-description {
+      color: var(--ink-muted);
+      font-size: .94rem;
+      line-height: 1.55;
+      margin: .35rem 0 0;
+    }
+
+    .preview { margin-top: .65rem; }
+    .preview pre {
+      background: var(--bg-soft);
+      border-radius: var(--radius-sm);
+      padding: .65rem .85rem;
+      overflow: auto;
+      font: .85rem / 1.55 ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, monospace;
+      margin: 0;
+      color: var(--ink);
+    }
+    .preview iframe {
+      width: 100%;
+      min-height: 150px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: white;
+      display: block;
+    }
+
+    details.comment { margin: .6rem 0 0; }
+    details.comment summary {
+      cursor: pointer;
+      color: var(--accent);
+      font-size: .92rem;
+      font-weight: 500;
+      user-select: none;
+      padding: .15rem 0;
+      list-style: none;
+      display: inline-flex;
+      align-items: center;
+      gap: .25rem;
+    }
+    details.comment summary::before {
+      content: "+";
+      display: inline-block;
+      width: 1em;
+      font-weight: 600;
+      transition: transform .15s ease;
+    }
+    details.comment[open] summary::before { content: "−"; }
+    details.comment summary::-webkit-details-marker { display: none; }
+    details.comment textarea, #notes {
+      width: 100%;
+      min-height: 4.5em;
+      margin-top: .5rem;
+      font: inherit;
+      padding: .6rem .75rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--line-strong);
+      background: var(--bg-elev);
+      color: var(--ink);
+      resize: vertical;
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    details.comment textarea:focus, #notes:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    #notes { min-height: 7em; }
+
+    #submit-row {
+      margin: 2rem 0 1rem;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    button#submit {
+      background: linear-gradient(180deg, var(--accent) 0%, var(--accent-deep) 100%);
+      color: white;
+      border: 0;
+      padding: .8rem 1.6rem;
+      font: inherit;
+      font-weight: 600;
+      letter-spacing: -0.005em;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: transform .1s ease, box-shadow .15s ease, filter .15s ease;
+    }
+    button#submit:hover { filter: brightness(1.05); box-shadow: var(--shadow-md); }
+    button#submit:active { transform: translateY(1px); }
+    button#submit[disabled] {
+      background: var(--line-strong);
+      cursor: not-allowed;
+      box-shadow: none;
+      filter: none;
+    }
+    #status { color: var(--ink-muted); font-size: .92rem; }
+
+    #banner {
+      padding: 1rem 1.25rem;
+      border-radius: var(--radius);
+      background: var(--accent-soft);
+      border: 1px solid var(--accent);
+      color: var(--ink);
+      margin-bottom: 1.5rem;
+      display: none;
+      box-shadow: var(--shadow-sm);
     }
   </style>
 </head>
 <body>
-  <div id="banner"></div>
+  <div id="banner" role="status" aria-live="polite"></div>
   <h1>{{ .Title }}</h1>
 
   {{ range .Sections }}
@@ -118,7 +299,7 @@
             {{ else if eq .Preview.Kind "text" }}
               <pre>{{ .Preview.Body }}</pre>
             {{ else if eq .Preview.Kind "html" }}
-              <iframe sandbox srcdoc="{{ .Preview.Body }}"></iframe>
+              <iframe sandbox="allow-scripts" srcdoc="{{ .Preview.Body }}" title="Preview of {{ .Label }}"></iframe>
             {{ end }}
           </div>
           {{ end }}
@@ -127,26 +308,26 @@
       </div>
       <details class="comment"{{ if .Comment }} open{{ end }}>
         <summary>Add comment</summary>
-        <textarea name="decision-comment-{{ .ID }}" placeholder="Notes about this decision…">{{ .Comment }}</textarea>
+        <textarea name="decision-comment-{{ .ID }}" placeholder="Notes about this decision…" aria-label="Comment for decision {{ .Prompt }}">{{ .Comment }}</textarea>
       </details>
     </div>
     {{ end }}
 
     <details class="comment"{{ if .Comment }} open{{ end }}>
       <summary>Add section comment</summary>
-      <textarea name="section-comment-{{ .ID }}" placeholder="Notes about this section…">{{ .Comment }}</textarea>
+      <textarea name="section-comment-{{ .ID }}" placeholder="Notes about this section…" aria-label="Comment for section {{ .Heading }}">{{ .Comment }}</textarea>
     </details>
   </section>
   {{ end }}
 
   <section class="spec-section">
     <h2>Further notes</h2>
-    <textarea id="notes" placeholder="Anything else for the agent?">{{ .Notes }}</textarea>
+    <textarea id="notes" placeholder="Anything else for the agent?" aria-label="Further notes">{{ .Notes }}</textarea>
   </section>
 
   <div id="submit-row">
     <button id="submit">Submit to agent</button>
-    <span id="status"></span>
+    <span id="status" aria-live="polite"></span>
   </div>
 
   <script>

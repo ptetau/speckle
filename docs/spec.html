@@ -5,123 +5,317 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Speckle — interactive spec</title>
   <style>
-    :root { color-scheme: light dark; }
+    /* ---------- Design tokens ---------- */
+    :root {
+      color-scheme: light dark;
+      --bg:           #faf7f2;
+      --bg-elev:     #ffffff;
+      --bg-soft:     #f4efe5;
+      --ink:         #1f1d1a;
+      --ink-muted:   #6b665d;
+      --line:        #e6e0d3;
+      --line-strong: #d4ccba;
+      --accent:      #2c6fbb;
+      --accent-deep: #1d4f88;
+      --accent-soft: #e5edf8;
+      --accent-glow: rgba(44, 111, 187, .18);
+      --rose:        #c25a78;
+      --shadow-sm:   0 1px 2px rgba(38, 30, 18, .04), 0 1px 1px rgba(38, 30, 18, .03);
+      --shadow-md:   0 4px 14px rgba(38, 30, 18, .06), 0 1px 2px rgba(38, 30, 18, .04);
+      --radius:      10px;
+      --radius-sm:   6px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:           #1a1816;
+        --bg-elev:     #242220;
+        --bg-soft:     #2d2a26;
+        --ink:         #ece8e0;
+        --ink-muted:   #a39d8f;
+        --line:        #38332c;
+        --line-strong: #4a443a;
+        --accent:      #6aa3e0;
+        --accent-deep: #4d86c4;
+        --accent-soft: #1f2e44;
+        --accent-glow: rgba(106, 163, 224, .22);
+        --rose:        #e08aa0;
+        --shadow-sm:   0 1px 2px rgba(0, 0, 0, .35);
+        --shadow-md:   0 6px 18px rgba(0, 0, 0, .35), 0 1px 2px rgba(0, 0, 0, .25);
+      }
+    }
+
     * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
     body {
-      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      max-width: 920px; margin: 2rem auto; padding: 0 1rem;
-      color: #1a1a1a; background: #fafaf7;
+      font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, "Inter",
+            "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      font-feature-settings: "cv11", "ss01", "ss03";
+      letter-spacing: -0.005em;
+      max-width: 920px;
+      margin: 3rem auto;
+      padding: 0 1.25rem;
+      color: var(--ink);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
     }
-    header { margin-bottom: 1.5rem; }
-    h1 { font-size: 1.85rem; margin: 0; }
-    .subtitle { color: #555; margin: .25rem 0 0; }
+
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    header { margin-bottom: 2rem; }
+    h1 {
+      font-size: 2.2rem;
+      line-height: 1.15;
+      letter-spacing: -0.025em;
+      margin: 0;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--ink), var(--accent-deep));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-wrap: balance;
+    }
+    .subtitle {
+      color: var(--ink-muted);
+      margin: .6rem 0 0;
+      font-size: 1.05rem;
+      max-width: 60ch;
+      text-wrap: pretty;
+    }
+
+    h2 {
+      font-size: 1.2rem;
+      line-height: 1.3;
+      letter-spacing: -0.015em;
+      margin: 0 0 .75rem;
+      font-weight: 650;
+      text-wrap: balance;
+    }
+
     section.spec-section {
-      border: 1px solid #ddd; border-radius: 8px;
-      padding: 1rem 1.25rem; margin: 0 0 1rem; background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 1.5rem 1.75rem;
+      margin: 0 0 1rem;
+      background: var(--bg-elev);
+      box-shadow: var(--shadow-sm);
     }
-    section.spec-section h2 { font-size: 1.2rem; margin: 0 0 .5rem; }
-    .body { color: #333; margin: 0 0 1rem; }
+    .body { color: var(--ink); margin: 0 0 1.25rem; }
     .body p { margin: 0 0 .5rem; }
-    .body code { background: #f0eee6; padding: 0 .25em; border-radius: 3px; font-size: .92em; }
+    .body p:last-child { margin-bottom: 0; }
+    .body ol { margin: .25rem 0 .5rem 1.25rem; padding: 0; }
+    .body li { margin: .15rem 0; }
+    .body code {
+      background: var(--bg-soft);
+      padding: 0.05em .35em;
+      border-radius: 4px;
+      font: .9em / 1 ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, monospace;
+    }
+
     .decision {
-      border-left: 3px solid #c9c9b8;
-      padding: .5rem 0 .5rem .75rem;
-      margin: 1rem 0;
+      border-left: 3px solid var(--line-strong);
+      padding: .25rem 0 .25rem 1rem;
+      margin: 1.25rem 0;
     }
-    .decision-prompt { font-weight: 600; margin-bottom: .5rem; }
-    .options { display: grid; gap: .5rem; }
+    .decision-prompt {
+      font-weight: 600;
+      letter-spacing: -0.005em;
+      margin-bottom: .65rem;
+    }
+
+    .options { display: grid; gap: .6rem; }
     .option {
-      border: 1px solid #ccc; border-radius: 6px; padding: .75rem;
-      background: #fcfcf8; cursor: pointer; display: block;
+      position: relative;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      padding: .9rem 1rem;
+      background: var(--bg-elev);
+      cursor: pointer;
+      display: block;
+      transition: border-color .15s ease, box-shadow .15s ease,
+                  background .15s ease, transform .15s ease;
     }
-    .option:hover { border-color: #888; }
-    .option input { margin-right: .5rem; vertical-align: top; margin-top: .3rem; }
+    .option:hover {
+      border-color: var(--line-strong);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-sm);
+    }
+    .option:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+      outline: none;
+    }
+    .option input[type=radio] {
+      margin-right: .5rem;
+      accent-color: var(--accent);
+      vertical-align: top;
+      margin-top: .3rem;
+    }
     .option.selected {
-      border-color: #2c7cbb;
-      box-shadow: 0 0 0 2px rgba(44, 124, 187, 0.2);
-      background: #f3f9ff;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+      background: var(--accent-soft);
     }
-    .option-label { font-weight: 600; }
+    .option-label { font-weight: 600; letter-spacing: -0.005em; }
     .badge {
-      display: inline-block; font-size: .7rem; font-weight: 600;
-      background: #2c7cbb; color: white; padding: .05rem .4rem;
-      border-radius: 3px; margin-left: .4rem; vertical-align: 2px;
+      display: inline-block;
+      font-size: .7rem;
+      font-weight: 600;
+      background: var(--accent);
+      color: white;
+      padding: .1rem .5rem;
+      border-radius: 999px;
+      margin-left: .4rem;
+      vertical-align: 2px;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
     }
-    .option-description { color: #555; font-size: .92rem; margin: .25rem 0 0; }
-    .preview { margin-top: .5rem; }
+    .option-description {
+      color: var(--ink-muted);
+      font-size: .94rem;
+      line-height: 1.55;
+      margin: .35rem 0 0;
+    }
+
+    .preview { margin-top: .65rem; }
     .preview pre {
-      background: #f4f4ee; border-radius: 4px;
-      padding: .5rem .75rem; overflow: auto; font-size: .82rem;
-      margin: 0; line-height: 1.45;
+      background: var(--bg-soft);
+      border-radius: var(--radius-sm);
+      padding: .65rem .85rem;
+      overflow: auto;
+      font: .85rem / 1.55 ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, monospace;
+      margin: 0;
+      color: var(--ink);
     }
     .preview iframe {
-      width: 100%; min-height: 160px;
-      border: 1px solid #ddd; border-radius: 4px; background: #fff;
+      width: 100%;
+      min-height: 160px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: white;
+      display: block;
     }
-    details.comment { margin: .5rem 0 0; }
+
+    details.comment { margin: .6rem 0 0; }
     details.comment summary {
-      cursor: pointer; color: #2c7cbb; font-size: .9rem;
+      cursor: pointer;
+      color: var(--accent);
+      font-size: .92rem;
+      font-weight: 500;
       user-select: none;
+      padding: .15rem 0;
+      list-style: none;
+      display: inline-flex;
+      align-items: center;
+      gap: .25rem;
     }
-    details.comment textarea {
-      width: 100%; min-height: 4em; margin-top: .5rem;
-      font: inherit; padding: .5rem; border-radius: 4px;
-      border: 1px solid #ccc;
+    details.comment summary::before {
+      content: "+";
+      display: inline-block;
+      width: 1em;
+      font-weight: 600;
     }
-    #notes {
-      width: 100%; min-height: 8em; font: inherit;
-      padding: .75rem; border-radius: 6px; border: 1px solid #ccc;
+    details.comment[open] summary::before { content: "−"; }
+    details.comment summary::-webkit-details-marker { display: none; }
+    details.comment textarea, #notes {
+      width: 100%;
+      min-height: 4.5em;
+      margin-top: .5rem;
+      font: inherit;
+      padding: .6rem .75rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--line-strong);
+      background: var(--bg-elev);
+      color: var(--ink);
+      resize: vertical;
+      transition: border-color .15s ease, box-shadow .15s ease;
     }
-    #submit-row { margin: 1.5rem 0 .5rem; display: flex; gap: 1rem; align-items: center; }
+    details.comment textarea:focus, #notes:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    #notes { min-height: 7em; }
+
+    #submit-row {
+      margin: 2rem 0 .5rem;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
     button#submit {
-      background: #2c7cbb; color: white; border: 0;
-      padding: .75rem 1.5rem; font: inherit; font-weight: 600;
-      border-radius: 6px; cursor: pointer;
+      background: linear-gradient(180deg, var(--accent) 0%, var(--accent-deep) 100%);
+      color: white;
+      border: 0;
+      padding: .8rem 1.6rem;
+      font: inherit;
+      font-weight: 600;
+      letter-spacing: -0.005em;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: transform .1s ease, box-shadow .15s ease, filter .15s ease;
     }
-    button#submit:hover { background: #235e8e; }
+    button#submit:hover { filter: brightness(1.05); box-shadow: var(--shadow-md); }
+    button#submit:active { transform: translateY(1px); }
+
     #banner {
-      padding: .75rem 1rem; border-radius: 6px;
-      background: #fff4d6; border: 1px solid #e2c763;
-      margin: 1rem 0; display: none;
+      padding: 1rem 1.25rem;
+      border-radius: var(--radius);
+      background: var(--accent-soft);
+      border: 1px solid var(--accent);
+      color: var(--ink);
+      margin: 1.25rem 0;
+      display: none;
+      box-shadow: var(--shadow-sm);
     }
     #banner h3 { margin: 0 0 .5rem; font-size: 1rem; }
     #banner pre {
-      background: rgba(0,0,0,.04); padding: .6rem .75rem;
-      border-radius: 4px; overflow: auto; font-size: .82rem;
-      max-height: 320px; margin: 0;
+      background: var(--bg-soft);
+      padding: .7rem .85rem;
+      border-radius: var(--radius-sm);
+      overflow: auto;
+      font: .82rem / 1.55 ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, monospace;
+      max-height: 360px;
+      margin: 0;
+      color: var(--ink);
     }
     .prototype-notice {
-      background: #eef2ff; border: 1px solid #c8d2f5; color: #2b377a;
-      padding: .6rem .9rem; border-radius: 6px; margin-bottom: 1rem;
-      font-size: .92rem;
+      background: var(--bg-soft);
+      border: 1px solid var(--line);
+      color: var(--ink-muted);
+      padding: .8rem 1rem;
+      border-radius: var(--radius-sm);
+      margin-bottom: 1.5rem;
+      font-size: .94rem;
     }
-    @media (prefers-color-scheme: dark) {
-      body { background: #1c1c1a; color: #eee; }
-      .subtitle { color: #aaa; }
-      section.spec-section { background: #252523; border-color: #3a3a36; }
-      .option { background: #1f1f1d; border-color: #3a3a36; }
-      .option.selected { background: #1a3147; border-color: #4ea2e0; }
-      .preview pre, .body code { background: #2a2a27; }
-      details.comment textarea, #notes {
-        background: #1f1f1d; color: #eee; border-color: #3a3a36;
-      }
-      #banner { background: #3a330e; border-color: #7c6a26; color: #fbe9a1; }
-      #banner pre { background: rgba(255,255,255,.06); }
-      .prototype-notice { background: #1f2647; border-color: #36437f; color: #c8d2f5; }
-    }
+    .prototype-notice strong { color: var(--ink); }
   </style>
 </head>
 <body>
   <header>
     <h1>Speckle</h1>
-    <p class="subtitle">Agent-driven spec building tool — interactive plan, rendered as a static prototype of speckle itself.</p>
+    <p class="subtitle">Agent-driven spec building tool — its own plan, rendered as a static prototype of speckle itself.</p>
   </header>
 
   <div class="prototype-notice">
     <strong>Prototype.</strong> This is a single static HTML file mimicking what
     <code>speckle serve</code> renders. There's no server: clicking <em>Submit
-    to agent</em> dumps the would-be submission JSON into a banner below the form
-    instead of POSTing it.
+    to agent</em> dumps the would-be submission JSON into a banner below the
+    form instead of POSTing it.
   </div>
 
   <!-- ============================================================== -->
@@ -388,22 +582,22 @@ EOF</code></pre>
       <div class="decision-prompt">How locked down are HTML previews?</div>
       <div class="options">
 
-        <label class="option selected" data-option-id="strict-sandbox">
-          <input type="radio" name="decision-sandbox-mode" value="strict-sandbox" checked>
+        <label class="option" data-option-id="strict-sandbox">
+          <input type="radio" name="decision-sandbox-mode" value="strict-sandbox">
           <span class="option-label">Strict <code>&lt;iframe sandbox srcdoc&gt;</code> — no scripts, no network</span>
-          <span class="badge">current</span>
           <div class="option-description">Styled markup only. Safe; mocks look static.</div>
           <div class="preview">
-            <iframe sandbox srcdoc='&lt;div style=&quot;display:flex;align-items:center;justify-content:center;min-height:120px;background:#f4f4ee;font-family:sans-serif;&quot;&gt;&lt;form style=&quot;background:white;padding:1rem 1.5rem;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);&quot;&gt;&lt;h3 style=&quot;margin:0 0 .5rem;&quot;&gt;Log in&lt;/h3&gt;&lt;input placeholder=&quot;email&quot; style=&quot;display:block;margin:.25rem 0;padding:.4rem;border:1px solid #ccc;border-radius:4px;width:200px;&quot;&gt;&lt;input type=&quot;password&quot; placeholder=&quot;password&quot; style=&quot;display:block;margin:.25rem 0;padding:.4rem;border:1px solid #ccc;border-radius:4px;width:200px;&quot;&gt;&lt;button style=&quot;margin-top:.5rem;padding:.4rem .8rem;background:#2c7cbb;color:white;border:0;border-radius:4px;&quot;&gt;Sign in&lt;/button&gt;&lt;/form&gt;&lt;/div&gt;'></iframe>
+            <iframe sandbox srcdoc='&lt;div style=&quot;display:flex;align-items:center;justify-content:center;min-height:120px;background:#f4f4ee;font-family:sans-serif;&quot;&gt;&lt;form style=&quot;background:white;padding:1rem 1.5rem;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);&quot;&gt;&lt;h3 style=&quot;margin:0 0 .5rem;&quot;&gt;Log in&lt;/h3&gt;&lt;input placeholder=&quot;email&quot; style=&quot;display:block;margin:.25rem 0;padding:.4rem;border:1px solid #ccc;border-radius:4px;width:200px;&quot;&gt;&lt;input type=&quot;password&quot; placeholder=&quot;password&quot; style=&quot;display:block;margin:.25rem 0;padding:.4rem;border:1px solid #ccc;border-radius:4px;width:200px;&quot;&gt;&lt;button style=&quot;margin-top:.5rem;padding:.4rem .8rem;background:#2c6fbb;color:white;border:0;border-radius:4px;&quot;&gt;Sign in&lt;/button&gt;&lt;/form&gt;&lt;/div&gt;' title="strict preview"></iframe>
           </div>
         </label>
 
-        <label class="option" data-option-id="sandbox-scripts">
-          <input type="radio" name="decision-sandbox-mode" value="sandbox-scripts">
+        <label class="option selected" data-option-id="sandbox-scripts">
+          <input type="radio" name="decision-sandbox-mode" value="sandbox-scripts" checked>
           <span class="option-label">Sandbox <code>allow-scripts</code> — JS in previews works</span>
-          <div class="option-description">Interactive mockups (hover, state). Per-option opt-in only; preview JS can still talk back to the page if <code>allow-same-origin</code> is added.</div>
+          <span class="badge">current</span>
+          <div class="option-description">Interactive mockups (hover, state, animation). No <code>allow-same-origin</code>, so previews still can't reach the page.</div>
           <div class="preview">
-            <iframe sandbox="allow-scripts" srcdoc='&lt;div style=&quot;font-family:sans-serif;padding:1rem;&quot;&gt;&lt;p&gt;Live counter (would only work with allow-scripts):&lt;/p&gt;&lt;button id=&quot;b&quot; style=&quot;padding:.4rem .8rem;background:#2c7cbb;color:white;border:0;border-radius:4px;&quot;&gt;Clicked 0 times&lt;/button&gt;&lt;script&gt;let n=0;document.getElementById(&quot;b&quot;).onclick=()=&gt;{n++;b.textContent=&quot;Clicked &quot;+n+&quot; times&quot;}&lt;/script&gt;&lt;/div&gt;'></iframe>
+            <iframe sandbox="allow-scripts" srcdoc='&lt;div style=&quot;font-family:ui-sans-serif,system-ui,sans-serif;padding:1rem;color:#1f1d1a;&quot;&gt;&lt;p style=&quot;margin:0 0 .5rem;&quot;&gt;Live counter (allow-scripts):&lt;/p&gt;&lt;button id=&quot;b&quot; style=&quot;padding:.5rem 1rem;background:linear-gradient(180deg,#2c6fbb,#1d4f88);color:white;border:0;border-radius:6px;font:inherit;font-weight:600;cursor:pointer;&quot;&gt;Clicked 0 times&lt;/button&gt;&lt;script&gt;let n=0;document.getElementById(&quot;b&quot;).onclick=()=&gt;{n++;b.textContent=&quot;Clicked &quot;+n+&quot; times&quot;}&lt;/script&gt;&lt;/div&gt;' title="scripted preview"></iframe>
           </div>
         </label>
 
@@ -484,22 +678,19 @@ setInterval(async () =&gt; {
 
   <!-- ============================================================== -->
   <section class="spec-section" data-section-id="ordering">
-    <h2>7. Open: YAML key ordering on patch</h2>
+    <h2>7. YAML key ordering on patch</h2>
     <div class="body">
-      <p>Today, <code>speckle patch</code> round-trips YAML through
-      <code>map[string]any</code>, so output keys come back alphabetically
-      sorted. Functional, but the diff between iterations is uglier than
-      it needs to be.</p>
+      <p>How the agent's authored key order survives a round of
+      <code>speckle patch</code>.</p>
     </div>
 
     <div class="decision" data-decision-id="yaml-ordering">
       <div class="decision-prompt">Preserve the agent's key order across patches?</div>
       <div class="options">
 
-        <label class="option selected" data-option-id="alpha-sort">
-          <input type="radio" name="decision-yaml-ordering" value="alpha-sort" checked>
-          <span class="option-label">Leave as alphabetical (current)</span>
-          <span class="badge">current</span>
+        <label class="option" data-option-id="alpha-sort">
+          <input type="radio" name="decision-yaml-ordering" value="alpha-sort">
+          <span class="option-label">Leave as alphabetical</span>
           <div class="option-description">Cheapest. File diffs will reshuffle on every patch.</div>
           <div class="preview">
             <pre><code># Before patch (agent-authored order):
@@ -514,16 +705,24 @@ setInterval(async () =&gt; {
           </div>
         </label>
 
-        <label class="option" data-option-id="yaml-node">
-          <input type="radio" name="decision-yaml-ordering" value="yaml-node">
+        <label class="option selected" data-option-id="yaml-node">
+          <input type="radio" name="decision-yaml-ordering" value="yaml-node" checked>
           <span class="option-label">Route the overlay through <code>yaml.Node</code></span>
-          <div class="option-description">Preserves key order and comments. ~150 lines of additional Go for the node-aware merge.</div>
+          <span class="badge">current</span>
+          <div class="option-description">Preserves key order and comments. The merge walks the node tree directly instead of round-tripping through Go maps.</div>
           <div class="preview">
-            <pre><code>// Merge at the yaml.Node level:
-func mergeNode(base, overlay *yaml.Node) *yaml.Node {
-  // walk MappingNode pairs, preserve order
-  // recurse into matching keys
-  // append new keys at end
+            <pre><code>// merge at the yaml.Node level:
+func mergeMapping(base, overlay *yaml.Node) *yaml.Node {
+    for i := 0; i &lt; len(overlay.Content); i += 2 {
+        k, v := overlay.Content[i], overlay.Content[i+1]
+        if isNullScalar(v) { removeMapKey(base, k.Value); continue }
+        if idx := mapKeyIndex(base, k.Value); idx &gt;= 0 {
+            base.Content[idx+1] = mergeOverlayNodes(base.Content[idx+1], v)
+        } else {
+            base.Content = append(base.Content, k, v)
+        }
+    }
+    return base
 }</code></pre>
           </div>
         </label>
@@ -555,32 +754,31 @@ func mergeNode(base, overlay *yaml.Node) *yaml.Node {
       file. (The page you're reading uses the same styling.)</p>
     </div>
     <div class="preview">
-      <iframe sandbox srcdoc='&lt;style&gt;body{font:14px/1.5 -apple-system,sans-serif;background:#fafaf7;color:#1a1a1a;margin:1rem;}h2{font-size:1rem;margin:0 0 .25rem;}.sec{background:#fff;border:1px solid #ddd;border-radius:8px;padding:.75rem 1rem;margin-bottom:.5rem;}.dec{border-left:3px solid #c9c9b8;padding:.25rem 0 .25rem .5rem;margin:.5rem 0;}.opt{border:1px solid #ccc;border-radius:6px;padding:.5rem;background:#fcfcf8;margin:.25rem 0;font-size:.85rem;}.opt.sel{border-color:#2c7cbb;background:#f3f9ff;box-shadow:0 0 0 2px rgba(44,124,187,.2);}button{background:#2c7cbb;color:white;border:0;padding:.4rem .8rem;border-radius:4px;font:inherit;font-weight:600;}&lt;/style&gt;&lt;div class=&quot;sec&quot;&gt;&lt;h2&gt;Authentication method&lt;/h2&gt;&lt;div class=&quot;dec&quot;&gt;&lt;div style=&quot;font-weight:600;font-size:.9rem;margin-bottom:.25rem;&quot;&gt;Which auth method?&lt;/div&gt;&lt;div class=&quot;opt sel&quot;&gt;&lt;input type=&quot;radio&quot; checked&gt; &lt;b&gt;JWT&lt;/b&gt; &lt;span style=&quot;color:#555;&quot;&gt;Stateless tokens&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;opt&quot;&gt;&lt;input type=&quot;radio&quot;&gt; &lt;b&gt;Server-side session&lt;/b&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;button&gt;Submit to agent&lt;/button&gt;'></iframe>
+      <iframe sandbox="allow-scripts" srcdoc='&lt;style&gt;body{font:14px/1.55 ui-sans-serif,system-ui,-apple-system,sans-serif;background:#faf7f2;color:#1f1d1a;margin:1.25rem;letter-spacing:-.005em;}h2{font-size:1rem;margin:0 0 .35rem;letter-spacing:-.015em;}.sec{background:#fff;border:1px solid #e6e0d3;border-radius:10px;padding:.85rem 1.1rem;margin-bottom:.6rem;box-shadow:0 1px 2px rgba(38,30,18,.04);}.dec{border-left:3px solid #d4ccba;padding:.25rem 0 .25rem .6rem;margin:.4rem 0;}.opt{border:1px solid #e6e0d3;border-radius:6px;padding:.55rem .75rem;background:#fff;margin:.25rem 0;font-size:.85rem;transition:transform .15s ease;}.opt:hover{transform:translateY(-1px);}.opt.sel{border-color:#2c6fbb;background:#e5edf8;box-shadow:0 0 0 3px rgba(44,111,187,.18);}button{background:linear-gradient(180deg,#2c6fbb,#1d4f88);color:white;border:0;padding:.5rem 1rem;border-radius:6px;font:inherit;font-weight:600;cursor:pointer;}button:hover{filter:brightness(1.05);}&lt;/style&gt;&lt;div class=&quot;sec&quot;&gt;&lt;h2&gt;Authentication method&lt;/h2&gt;&lt;div class=&quot;dec&quot;&gt;&lt;div style=&quot;font-weight:600;font-size:.9rem;margin-bottom:.3rem;&quot;&gt;Which auth method?&lt;/div&gt;&lt;div class=&quot;opt sel&quot;&gt;&lt;input type=&quot;radio&quot; checked&gt; &lt;b&gt;JWT&lt;/b&gt; &lt;span style=&quot;color:#6b665d;&quot;&gt;Stateless tokens&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;opt&quot;&gt;&lt;input type=&quot;radio&quot;&gt; &lt;b&gt;Server-side session&lt;/b&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;button&gt;Submit to agent&lt;/button&gt;' title="rendered page mockup"></iframe>
     </div>
-    <details class="comment">
+    <details class="comment" open>
       <summary>Add section comment</summary>
-      <textarea name="section-comment-look" placeholder="Notes about this section…"></textarea>
+      <textarea name="section-comment-look" placeholder="Notes about this section…">ensure the typography is accessble and the design is joyful and elegant</textarea>
     </details>
   </section>
 
   <!-- ============================================================== -->
   <section class="spec-section">
     <h2>Further notes</h2>
-    <textarea id="notes" placeholder="Anything else for the agent? Open questions, follow-ups, things missing from the plan…"></textarea>
+    <textarea id="notes" placeholder="Anything else for the agent?" aria-label="Further notes"></textarea>
   </section>
 
   <div id="submit-row">
     <button id="submit">Submit to agent</button>
-    <span id="status"></span>
+    <span id="status" aria-live="polite"></span>
   </div>
 
-  <div id="banner" aria-live="polite"></div>
+  <div id="banner" role="status" aria-live="polite"></div>
 
   <script>
     (function () {
       const SPEC_VERSION = 1;
 
-      // Option-card highlighting + radio change handling.
       document.querySelectorAll('.options').forEach(group => {
         group.addEventListener('change', (ev) => {
           if (ev.target.matches('input[type=radio]')) {

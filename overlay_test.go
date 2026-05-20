@@ -1,98 +1,124 @@
 package main
 
 import (
+	"bytes"
 	"os"
-	"reflect"
+	"strings"
 	"testing"
 
 	"gopkg.in/yaml.v3"
 )
 
-func unmarshal(t *testing.T, s string) any {
+// merge runs the same pipeline as `speckle patch`: parse both as nodes,
+// merge, re-marshal. Returns the resulting YAML as a string.
+func merge(t *testing.T, baseStr, overlayStr string) string {
 	t.Helper()
-	var v any
-	if err := yaml.Unmarshal([]byte(s), &v); err != nil {
-		t.Fatalf("yaml: %v", err)
+	var baseDoc, overlayDoc yaml.Node
+	if err := yaml.Unmarshal([]byte(baseStr), &baseDoc); err != nil {
+		t.Fatalf("base yaml: %v", err)
 	}
-	return v
+	if err := yaml.Unmarshal([]byte(overlayStr), &overlayDoc); err != nil {
+		t.Fatalf("overlay yaml: %v", err)
+	}
+	merged := mergeOverlayNodes(baseDoc.Content[0], overlayDoc.Content[0])
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+	if err := enc.Encode(merged); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	enc.Close()
+	return strings.TrimRight(buf.String(), "\n")
+}
+
+func eq(t *testing.T, got, want string) {
+	t.Helper()
+	if strings.TrimRight(got, "\n") != strings.TrimRight(want, "\n") {
+		t.Fatalf("merge result mismatch:\n--- got ---\n%s\n--- want ---\n%s\n", got, want)
+	}
 }
 
 func TestMergeMapDeep(t *testing.T) {
-	base := unmarshal(t, "a: 1\nb:\n  c: 2\n  d: 3\n")
-	overlay := unmarshal(t, "b:\n  c: 99\n  e: 4\n")
-	want := unmarshal(t, "a: 1\nb:\n  c: 99\n  d: 3\n  e: 4\n")
-	if got := mergeOverlay(base, overlay); !reflect.DeepEqual(got, want) {
-		t.Fatalf("got %v want %v", got, want)
-	}
+	got := merge(t,
+		"a: 1\nb:\n  c: 2\n  d: 3\n",
+		"b:\n  c: 99\n  e: 4\n",
+	)
+	eq(t, got, "a: 1\nb:\n  c: 99\n  d: 3\n  e: 4")
 }
 
 func TestMergeNullDeletes(t *testing.T) {
-	base := unmarshal(t, "a: 1\nb: 2\n")
-	overlay := unmarshal(t, "b: null\n")
-	want := unmarshal(t, "a: 1\n")
-	if got := mergeOverlay(base, overlay); !reflect.DeepEqual(got, want) {
-		t.Fatalf("got %v want %v", got, want)
-	}
+	got := merge(t,
+		"a: 1\nb: 2\nc: 3\n",
+		"b: null\n",
+	)
+	eq(t, got, "a: 1\nc: 3")
 }
 
 func TestMergeListByID(t *testing.T) {
-	base := unmarshal(t, `
+	got := merge(t, `
 items:
   - id: a
     label: first
   - id: b
     label: second
-`)
-	overlay := unmarshal(t, `
+`, `
 items:
   - id: b
     label: updated
   - id: c
     label: new
 `)
-	want := unmarshal(t, `
-items:
+	eq(t, got, `items:
   - id: a
     label: first
   - id: b
     label: updated
   - id: c
-    label: new
-`)
-	if got := mergeOverlay(base, overlay); !reflect.DeepEqual(got, want) {
-		t.Fatalf("got %v\nwant %v", got, want)
-	}
+    label: new`)
 }
 
 func TestMergeListDelete(t *testing.T) {
-	base := unmarshal(t, `
+	got := merge(t, `
 items:
   - id: a
   - id: b
   - id: c
-`)
-	overlay := unmarshal(t, `
+`, `
 items:
   - id: b
     _delete: true
 `)
-	want := unmarshal(t, `
-items:
+	eq(t, got, `items:
   - id: a
-  - id: c
-`)
-	if got := mergeOverlay(base, overlay); !reflect.DeepEqual(got, want) {
-		t.Fatalf("got %v\nwant %v", got, want)
-	}
+  - id: c`)
 }
 
 func TestMergePlainListReplaces(t *testing.T) {
-	base := unmarshal(t, "tags: [one, two, three]\n")
-	overlay := unmarshal(t, "tags: [four]\n")
-	want := unmarshal(t, "tags: [four]\n")
-	if got := mergeOverlay(base, overlay); !reflect.DeepEqual(got, want) {
-		t.Fatalf("got %v want %v", got, want)
-	}
+	got := merge(t, "tags:\n  - one\n  - two\n  - three\n", "tags:\n  - four\n")
+	eq(t, got, "tags:\n  - four")
+}
+
+// The chief reason for the node-based merge: preserve the agent's key
+// order across patch rounds.
+func TestMergePreservesKeyOrder(t *testing.T) {
+	got := merge(t, `
+version: 1
+title: hello
+sections:
+  - id: one
+    heading: First
+    body: prose
+`, `
+sections:
+  - id: one
+    body: revised
+`)
+	eq(t, got, `version: 1
+title: hello
+sections:
+  - id: one
+    heading: First
+    body: revised`)
 }
 
 func TestExampleSpecParses(t *testing.T) {

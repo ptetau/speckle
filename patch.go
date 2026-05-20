@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -24,19 +25,32 @@ func runPatch(args []string) error {
 		return err
 	}
 
-	var base, overlay any
-	if err := yaml.Unmarshal(baseBytes, &base); err != nil {
+	var baseDoc, overlayDoc yaml.Node
+	if err := yaml.Unmarshal(baseBytes, &baseDoc); err != nil {
 		return fmt.Errorf("parse base: %w", err)
 	}
-	if err := yaml.Unmarshal(overlayBytes, &overlay); err != nil {
+	if err := yaml.Unmarshal(overlayBytes, &overlayDoc); err != nil {
 		return fmt.Errorf("parse overlay: %w", err)
 	}
-
-	merged := mergeOverlay(base, overlay)
-	out, err := yaml.Marshal(merged)
-	if err != nil {
-		return fmt.Errorf("marshal: %w", err)
+	if baseDoc.Kind != yaml.DocumentNode || len(baseDoc.Content) == 0 {
+		return errors.New("base file is empty")
 	}
+	if overlayDoc.Kind != yaml.DocumentNode || len(overlayDoc.Content) == 0 {
+		return errors.New("overlay is empty")
+	}
+
+	merged := mergeOverlayNodes(baseDoc.Content[0], overlayDoc.Content[0])
+
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+	if err := enc.Encode(merged); err != nil {
+		return fmt.Errorf("encode: %w", err)
+	}
+	if err := enc.Close(); err != nil {
+		return err
+	}
+	out := buf.Bytes()
 	if _, err := parseSpec(out); err != nil {
 		return fmt.Errorf("merged result is not a valid spec: %w", err)
 	}

@@ -115,7 +115,9 @@ sections:
 
 ## Security
 
-HTML previews load inside `<iframe sandbox srcdoc="…">` with no
-`allow-scripts`, `allow-same-origin`, or other permissions — they render
-styled markup only. The page itself trusts the `.speckle` file, so only
-run `speckle serve` on files you (or your agent) produced.
+HTML previews load inside `<iframe sandbox="allow-scripts" srcdoc="…">`.
+Scripts inside a preview run, so options can demo interactive widgets
+(hover state, animations, counters), but the iframe has no
+`allow-same-origin` — preview JS cannot read cookies, reach the parent
+page, or speak to the server. The page itself trusts the `.speckle`
+file, so only run `speckle serve` on files you (or your agent) produced.

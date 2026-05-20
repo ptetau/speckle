@@ -1,94 +1,123 @@
 package main
 
-import "fmt"
+import "gopkg.in/yaml.v3"
 
-// mergeOverlay deep-merges overlay into base with these rules:
-//   - Maps merge by key. Null values in the overlay delete the key.
-//   - Lists of maps that all carry an "id" field merge by id; matching items
-//     deep-merge, unmatched overlay items are appended. An overlay item with
-//     "_delete: true" removes the matching base item.
-//   - All other values (scalars, mismatched types, lists without ids) are
-//     replaced wholesale by the overlay.
-func mergeOverlay(base, overlay any) any {
-	bMap, bIsMap := base.(map[string]any)
-	oMap, oIsMap := overlay.(map[string]any)
-	if bIsMap && oIsMap {
-		out := make(map[string]any, len(bMap)+len(oMap))
-		for k, v := range bMap {
-			out[k] = v
-		}
-		for k, v := range oMap {
-			if v == nil {
-				delete(out, k)
-				continue
-			}
-			if existing, ok := out[k]; ok {
-				out[k] = mergeOverlay(existing, v)
-			} else {
-				out[k] = v
-			}
-		}
-		return out
+// mergeOverlayNodes deep-merges overlay into base at the yaml.Node level,
+// preserving the base document's key order and (where unchanged) its
+// comments. Rules:
+//
+//   - Maps merge by key. A null value in the overlay deletes that key.
+//   - Lists of mappings where every item has an "id" field merge by id;
+//     matching items deep-merge, unmatched overlay items are appended,
+//     an overlay item with "_delete: true" removes the matching base item.
+//   - All other values (scalars, mismatched kinds, lists without ids)
+//     are replaced wholesale by the overlay.
+//
+// base is mutated in place where possible; the returned node may be base
+// (after edits) or overlay (for wholesale replacements).
+func mergeOverlayNodes(base, overlay *yaml.Node) *yaml.Node {
+	if base.Kind == yaml.MappingNode && overlay.Kind == yaml.MappingNode {
+		return mergeMapping(base, overlay)
 	}
-
-	bList, bIsList := base.([]any)
-	oList, oIsList := overlay.([]any)
-	if bIsList && oIsList && listOfIDMaps(bList) && listOfIDMaps(oList) {
-		return mergeListByID(bList, oList)
+	if base.Kind == yaml.SequenceNode && overlay.Kind == yaml.SequenceNode &&
+		sequenceOfIDMaps(base) && sequenceOfIDMaps(overlay) {
+		return mergeSequenceByID(base, overlay)
 	}
-
 	return overlay
 }
 
-func listOfIDMaps(l []any) bool {
-	if len(l) == 0 {
+func mergeMapping(base, overlay *yaml.Node) *yaml.Node {
+	for i := 0; i < len(overlay.Content); i += 2 {
+		k, v := overlay.Content[i], overlay.Content[i+1]
+		if isNullScalar(v) {
+			removeMapKey(base, k.Value)
+			continue
+		}
+		if idx := mapKeyIndex(base, k.Value); idx >= 0 {
+			base.Content[idx+1] = mergeOverlayNodes(base.Content[idx+1], v)
+		} else {
+			base.Content = append(base.Content, k, v)
+		}
+	}
+	return base
+}
+
+func mergeSequenceByID(base, overlay *yaml.Node) *yaml.Node {
+	idIdx := map[string]int{}
+	for i, item := range base.Content {
+		if id := mapScalarValue(item, "id"); id != "" {
+			idIdx[id] = i
+		}
+	}
+	for _, oItem := range overlay.Content {
+		id := mapScalarValue(oItem, "id")
+		if mapScalarValue(oItem, "_delete") == "true" {
+			if i, ok := idIdx[id]; ok {
+				base.Content[i] = nil
+			}
+			continue
+		}
+		if i, ok := idIdx[id]; ok {
+			base.Content[i] = mergeOverlayNodes(base.Content[i], oItem)
+		} else {
+			idIdx[id] = len(base.Content)
+			base.Content = append(base.Content, oItem)
+		}
+	}
+	compacted := base.Content[:0]
+	for _, x := range base.Content {
+		if x != nil {
+			compacted = append(compacted, x)
+		}
+	}
+	base.Content = compacted
+	return base
+}
+
+func sequenceOfIDMaps(s *yaml.Node) bool {
+	if len(s.Content) == 0 {
 		return false
 	}
-	for _, item := range l {
-		m, ok := item.(map[string]any)
-		if !ok {
-			return false
-		}
-		if _, has := m["id"]; !has {
+	for _, item := range s.Content {
+		if item.Kind != yaml.MappingNode || mapKeyIndex(item, "id") < 0 {
 			return false
 		}
 	}
 	return true
 }
 
-func mergeListByID(base, overlay []any) []any {
-	idx := map[string]int{}
-	result := make([]any, 0, len(base))
-	for _, item := range base {
-		m := item.(map[string]any)
-		id := fmt.Sprint(m["id"])
-		idx[id] = len(result)
-		result = append(result, m)
+func mapKeyIndex(m *yaml.Node, key string) int {
+	if m.Kind != yaml.MappingNode {
+		return -1
 	}
-	for _, item := range overlay {
-		m, ok := item.(map[string]any)
-		if !ok {
-			continue
-		}
-		id := fmt.Sprint(m["id"])
-		if del, _ := m["_delete"].(bool); del {
-			if i, ok := idx[id]; ok {
-				result[i] = nil
-			}
-			continue
-		}
-		if i, ok := idx[id]; ok {
-			result[i] = mergeOverlay(result[i], m)
-		} else {
-			idx[id] = len(result)
-			result = append(result, m)
+	for i := 0; i < len(m.Content); i += 2 {
+		if m.Content[i].Value == key {
+			return i
 		}
 	}
-	out := result[:0]
-	for _, x := range result {
-		if x != nil {
-			out = append(out, x)
-		}
+	return -1
+}
+
+func removeMapKey(m *yaml.Node, key string) {
+	i := mapKeyIndex(m, key)
+	if i < 0 {
+		return
 	}
-	return out
+	m.Content = append(m.Content[:i], m.Content[i+2:]...)
+}
+
+func mapScalarValue(m *yaml.Node, key string) string {
+	i := mapKeyIndex(m, key)
+	if i < 0 {
+		return ""
+	}
+	v := m.Content[i+1]
+	if v.Kind != yaml.ScalarNode {
+		return ""
+	}
+	return v.Value
+}
+
+func isNullScalar(n *yaml.Node) bool {
+	return n.Kind == yaml.ScalarNode && (n.Tag == "!!null" || n.Value == "null" || n.Value == "~")
 }
