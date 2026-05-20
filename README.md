@@ -113,6 +113,18 @@ sections:
             _delete: true
 ```
 
+## Development
+
+- **[`AGENTS.md`](./AGENTS.md)** — read first if you're an agent (or a
+  human treating the codebase like one).
+- **[`docs/development-guidelines.html`](./docs/development-guidelines.html)**
+  — how we build speckle: modular monolith in `internal/<module>/`,
+  outside-in acceptance tests, red&nbsp;/&nbsp;green&nbsp;/&nbsp;refactor.
+- **[`docs/spec.html`](./docs/spec.html)** — the plan for speckle
+  itself, rendered as a worked example.
+- **[`docs/implementation-plan.md`](./docs/implementation-plan.md)** —
+  outstanding work to bring the codebase in line with the guidelines.
+
 ## Security
 
 HTML previews load inside `<iframe sandbox="allow-scripts" srcdoc="…">`.
