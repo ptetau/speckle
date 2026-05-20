@@ -17,6 +17,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
+	"github.com/ptetau/speckle/internal/render"
 	"github.com/ptetau/speckle/internal/spec"
 )
 
@@ -33,8 +34,9 @@ type DecisionAnswer struct {
 }
 
 type server struct {
-	path   string
-	parser spec.Parser
+	path     string
+	parser   spec.Parser
+	renderer render.Renderer
 
 	mu      sync.RWMutex
 	spec    *spec.Spec
@@ -59,10 +61,11 @@ func runServe(args []string) error {
 	path := fs.Arg(0)
 
 	s := &server{
-		path:    path,
-		parser:  spec.NewParser(),
-		subs:    make(map[chan struct{}]struct{}),
-		pending: make(chan Submission, 1),
+		path:     path,
+		parser:   spec.NewParser(),
+		renderer: render.NewRenderer(),
+		subs:     make(map[chan struct{}]struct{}),
+		pending:  make(chan Submission, 1),
 	}
 	if err := s.reload(); err != nil {
 		return err
@@ -196,7 +199,7 @@ func (s *server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	sp := s.spec
 	s.mu.RUnlock()
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := renderHTML(w, sp); err != nil {
+	if err := s.renderer.Render(w, sp); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
