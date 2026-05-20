@@ -33,9 +33,9 @@ notes: ""
 `
 
 // startServer launches the built speckle binary serving the given YAML in
-// a temp dir, returns its base URL once the lockfile lands, and a cleanup
-// that signals the process and reaps it.
-func startServer(t *testing.T, specYAML string) (string, func()) {
+// a temp dir, returns its base URL and the spec path once the lockfile
+// lands, plus a cleanup that signals the process and reaps it.
+func startServer(t *testing.T, specYAML string) (baseURL, specPath string, cleanup func()) {
 	t.Helper()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "plan.speckle")
@@ -58,7 +58,7 @@ func startServer(t *testing.T, specYAML string) (string, func()) {
 				URL string `json:"url"`
 			}
 			if json.Unmarshal(data, &l) == nil && l.URL != "" {
-				return l.URL, func() {
+				return l.URL, path, func() {
 					_ = cmd.Process.Signal(syscall.SIGINT)
 					_ = cmd.Wait()
 				}
@@ -69,14 +69,14 @@ func startServer(t *testing.T, specYAML string) (string, func()) {
 	_ = cmd.Process.Kill()
 	_ = cmd.Wait()
 	t.Fatalf("server didn't write lockfile within 2s\nstderr: %s", stderr.String())
-	return "", nil
+	return "", "", nil
 }
 
 // TestServeSubmitAwaitRoundTrip is the load-bearing acceptance test: the
 // full agent loop in miniature. User POSTs to /submit; agent GETs /await;
 // the same submission comes back.
 func TestServeSubmitAwaitRoundTrip(t *testing.T) {
-	url, stop := startServer(t, minSpec)
+	url, _, stop := startServer(t, minSpec)
 	defer stop()
 
 	r, err := http.Get(url + "/")
