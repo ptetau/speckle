@@ -1,0 +1,75 @@
+version: 1
+title: "Example: build a login screen"
+sections:
+  - id: auth-method
+    heading: Authentication method
+    body: |
+      Pick a server-side authentication strategy. The two options below
+      trade scale against operational simplicity.
+    decisions:
+      - id: strategy
+        prompt: How should users authenticate?
+        options:
+          - id: jwt
+            label: JWT (stateless)
+            description: Sign a token at login; the client sends it on every request.
+            preview:
+              kind: code
+              language: js
+              body: |
+                const token = jwt.sign({ sub: user.id }, process.env.JWT_SECRET);
+                res.json({ token });
+          - id: session
+            label: Server-side session
+            description: Store a session id in Redis; cookie-based.
+            preview:
+              kind: code
+              language: js
+              body: |
+                req.session.userId = user.id;
+                res.redirect('/dashboard');
+        default: jwt
+        selected: null
+
+  - id: ui
+    heading: Login UI layout
+    body: |
+      A first-pass mock of the form layout. These previews are sandboxed —
+      no scripts or network from inside the option iframes.
+    decisions:
+      - id: layout
+        prompt: Which layout do you prefer?
+        options:
+          - id: centered
+            label: Centered card
+            preview:
+              kind: html
+              body: |
+                <div style="display:flex;align-items:center;justify-content:center;min-height:140px;background:#f4f4ee;font-family:sans-serif;">
+                  <form style="background:white;padding:1rem 1.5rem;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);">
+                    <h3 style="margin:0 0 .5rem;">Log in</h3>
+                    <input placeholder="email" style="display:block;margin:.25rem 0;padding:.4rem;border:1px solid #ccc;border-radius:4px;width:200px;">
+                    <input type="password" placeholder="password" style="display:block;margin:.25rem 0;padding:.4rem;border:1px solid #ccc;border-radius:4px;width:200px;">
+                    <button style="margin-top:.5rem;padding:.4rem .8rem;background:#2c7cbb;color:white;border:0;border-radius:4px;">Sign in</button>
+                  </form>
+                </div>
+          - id: split
+            label: Split hero + form
+            preview:
+              kind: html
+              body: |
+                <div style="display:grid;grid-template-columns:1fr 1fr;min-height:160px;font-family:sans-serif;">
+                  <div style="background:linear-gradient(135deg,#2c7cbb,#4ea2e0);color:white;padding:1rem;">
+                    <h3 style="margin:0 0 .25rem;">Welcome back</h3>
+                    <p style="margin:0;font-size:.85rem;opacity:.9;">Sign in to continue.</p>
+                  </div>
+                  <form style="background:white;padding:1rem;display:flex;flex-direction:column;justify-content:center;">
+                    <input placeholder="email" style="margin:.25rem 0;padding:.4rem;border:1px solid #ccc;border-radius:4px;">
+                    <input type="password" placeholder="password" style="margin:.25rem 0;padding:.4rem;border:1px solid #ccc;border-radius:4px;">
+                    <button style="margin-top:.25rem;padding:.4rem;background:#2c7cbb;color:white;border:0;border-radius:4px;">Sign in</button>
+                  </form>
+                </div>
+        default: centered
+        selected: null
+
+notes: ""

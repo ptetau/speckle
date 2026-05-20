@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ .Title }}</title>
+  <style>
+    :root { color-scheme: light dark; }
+    * { box-sizing: border-box; }
+    body {
+      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 880px; margin: 2rem auto; padding: 0 1rem;
+      color: #1a1a1a; background: #fafaf7;
+    }
+    h1 { font-size: 1.75rem; margin: 0 0 1.5rem; }
+    section.spec-section {
+      border: 1px solid #ddd; border-radius: 8px;
+      padding: 1rem 1.25rem; margin: 0 0 1rem; background: #fff;
+    }
+    section.spec-section h2 { font-size: 1.2rem; margin: 0 0 .5rem; }
+    .body { color: #333; margin: 0 0 1rem; }
+    .body p { margin: 0 0 .5rem; }
+    .body code { background: #f0eee6; padding: 0 .25em; border-radius: 3px; }
+    .decision {
+      border-left: 3px solid #c9c9b8;
+      padding: .5rem 0 .5rem .75rem;
+      margin: 1rem 0;
+    }
+    .decision-prompt { font-weight: 600; margin-bottom: .5rem; }
+    .options { display: grid; gap: .5rem; }
+    .option {
+      border: 1px solid #ccc; border-radius: 6px; padding: .75rem;
+      background: #fcfcf8; cursor: pointer; display: block;
+    }
+    .option:hover { border-color: #888; }
+    .option input { margin-right: .5rem; }
+    .option.selected {
+      border-color: #2c7cbb;
+      box-shadow: 0 0 0 2px rgba(44, 124, 187, 0.2);
+      background: #f3f9ff;
+    }
+    .option-label { font-weight: 600; }
+    .option-description { color: #555; font-size: .92rem; margin: .25rem 0 0; }
+    .preview { margin-top: .5rem; }
+    .preview pre {
+      background: #f4f4ee; border-radius: 4px;
+      padding: .5rem .75rem; overflow: auto; font-size: .85rem;
+      margin: 0;
+    }
+    .preview iframe {
+      width: 100%; min-height: 140px;
+      border: 1px solid #ddd; border-radius: 4px; background: #fff;
+    }
+    details.comment { margin: .5rem 0 0; }
+    details.comment summary {
+      cursor: pointer; color: #2c7cbb; font-size: .9rem;
+      user-select: none;
+    }
+    details.comment textarea {
+      width: 100%; min-height: 4em; margin-top: .5rem;
+      font: inherit; padding: .5rem; border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    #notes {
+      width: 100%; min-height: 8em; font: inherit;
+      padding: .75rem; border-radius: 6px; border: 1px solid #ccc;
+    }
+    #submit-row { margin: 2rem 0; display: flex; gap: 1rem; align-items: center; }
+    button#submit {
+      background: #2c7cbb; color: white; border: 0;
+      padding: .75rem 1.5rem; font: inherit; font-weight: 600;
+      border-radius: 6px; cursor: pointer;
+    }
+    button#submit:hover { background: #235e8e; }
+    button#submit[disabled] { background: #aaa; cursor: not-allowed; }
+    #banner {
+      padding: .75rem 1rem; border-radius: 6px;
+      background: #fff4d6; border: 1px solid #e2c763;
+      margin-bottom: 1rem; display: none;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #1c1c1a; color: #eee; }
+      section.spec-section { background: #252523; border-color: #3a3a36; }
+      .option { background: #1f1f1d; border-color: #3a3a36; }
+      .option.selected { background: #1a3147; border-color: #4ea2e0; }
+      .preview pre, .body code { background: #2a2a27; }
+      details.comment textarea, #notes {
+        background: #1f1f1d; color: #eee; border-color: #3a3a36;
+      }
+      #banner { background: #3a330e; border-color: #7c6a26; color: #fbe9a1; }
+    }
+  </style>
+</head>
+<body>
+  <div id="banner"></div>
+  <h1>{{ .Title }}</h1>
+
+  {{ range .Sections }}
+  <section class="spec-section" data-section-id="{{ .ID }}">
+    <h2>{{ .Heading }}</h2>
+    {{ if .Body }}<div class="body">{{ renderMarkdown .Body }}</div>{{ end }}
+
+    {{ range .Decisions }}
+    <div class="decision" data-decision-id="{{ .ID }}">
+      <div class="decision-prompt">{{ .Prompt }}</div>
+      <div class="options">
+        {{ $decID := .ID }}
+        {{ $sel := selectedOption . }}
+        {{ range .Options }}
+        <label class="option {{ if eq .ID $sel }}selected{{ end }}" data-option-id="{{ .ID }}">
+          <input type="radio" name="decision-{{ $decID }}" value="{{ .ID }}"{{ if eq .ID $sel }} checked{{ end }}>
+          <span class="option-label">{{ .Label }}</span>
+          {{ if .Description }}<div class="option-description">{{ .Description }}</div>{{ end }}
+          {{ if .Preview }}
+          <div class="preview">
+            {{ if eq .Preview.Kind "code" }}
+              <pre><code class="lang-{{ .Preview.Language }}">{{ .Preview.Body }}</code></pre>
+            {{ else if eq .Preview.Kind "text" }}
+              <pre>{{ .Preview.Body }}</pre>
+            {{ else if eq .Preview.Kind "html" }}
+              <iframe sandbox srcdoc="{{ .Preview.Body }}"></iframe>
+            {{ end }}
+          </div>
+          {{ end }}
+        </label>
+        {{ end }}
+      </div>
+      <details class="comment"{{ if .Comment }} open{{ end }}>
+        <summary>Add comment</summary>
+        <textarea name="decision-comment-{{ .ID }}" placeholder="Notes about this decision…">{{ .Comment }}</textarea>
+      </details>
+    </div>
+    {{ end }}
+
+    <details class="comment"{{ if .Comment }} open{{ end }}>
+      <summary>Add section comment</summary>
+      <textarea name="section-comment-{{ .ID }}" placeholder="Notes about this section…">{{ .Comment }}</textarea>
+    </details>
+  </section>
+  {{ end }}
+
+  <section class="spec-section">
+    <h2>Further notes</h2>
+    <textarea id="notes" placeholder="Anything else for the agent?">{{ .Notes }}</textarea>
+  </section>
+
+  <div id="submit-row">
+    <button id="submit">Submit to agent</button>
+    <span id="status"></span>
+  </div>
+
+  <script>
+    (function () {
+      const specVersion = {{ .Version }};
+
+      const es = new EventSource('/events');
+      es.addEventListener('reload', () => location.reload());
+
+      document.querySelectorAll('.options').forEach(group => {
+        group.addEventListener('change', (ev) => {
+          if (ev.target.matches('input[type=radio]')) {
+            group.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+            ev.target.closest('.option').classList.add('selected');
+          }
+        });
+      });
+
+      const banner = document.getElementById('banner');
+      const status = document.getElementById('status');
+      const submit = document.getElementById('submit');
+
+      submit.addEventListener('click', async () => {
+        const decisions = {};
+        const sectionComments = {};
+        document.querySelectorAll('.decision').forEach(d => {
+          const id = d.dataset.decisionId;
+          const radio = d.querySelector('input[type=radio]:checked');
+          const ta = d.querySelector('textarea[name="decision-comment-' + id + '"]');
+          const comment = ta ? ta.value.trim() : '';
+          if (radio || comment) {
+            decisions[id] = {
+              selected: radio ? radio.value : '',
+              comment: comment || undefined,
+            };
+          }
+        });
+        document.querySelectorAll('section.spec-section').forEach(s => {
+          const id = s.dataset.sectionId;
+          if (!id) return;
+          const ta = s.querySelector('textarea[name="section-comment-' + id + '"]');
+          if (ta && ta.value.trim()) sectionComments[id] = ta.value.trim();
+        });
+        const notes = document.getElementById('notes').value.trim();
+        const body = {
+          spec_version: specVersion,
+          decisions,
+          section_comments: sectionComments,
+          notes,
+        };
+        submit.disabled = true;
+        status.textContent = 'Submitting…';
+        try {
+          const r = await fetch('/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+          if (r.ok) {
+            banner.textContent = 'Submission received — waiting for the agent to update the plan.';
+            banner.style.display = 'block';
+            status.textContent = '';
+          } else {
+            status.textContent = 'Submit failed: ' + r.status;
+            submit.disabled = false;
+          }
+        } catch (e) {
+          status.textContent = 'Submit failed: ' + e.message;
+          submit.disabled = false;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
