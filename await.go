@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+
+	"github.com/ptetau/speckle/internal/server"
 )
 
 func runAwait(args []string) error {
@@ -46,7 +48,7 @@ func runAwait(args []string) error {
 		b, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("server returned %d: %s", resp.StatusCode, b)
 	}
-	var sub Submission
+	var sub server.Submission
 	if err := json.NewDecoder(resp.Body).Decode(&sub); err != nil {
 		return fmt.Errorf("decode submission: %w", err)
 	}
