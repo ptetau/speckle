@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Speckle — interactive spec</title>
+  <style>
+    :root { color-scheme: light dark; }
+    * { box-sizing: border-box; }
+    body {
+      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 920px; margin: 2rem auto; padding: 0 1rem;
+      color: #1a1a1a; background: #fafaf7;
+    }
+    header { margin-bottom: 1.5rem; }
+    h1 { font-size: 1.85rem; margin: 0; }
+    .subtitle { color: #555; margin: .25rem 0 0; }
+    section.spec-section {
+      border: 1px solid #ddd; border-radius: 8px;
+      padding: 1rem 1.25rem; margin: 0 0 1rem; background: #fff;
+    }
+    section.spec-section h2 { font-size: 1.2rem; margin: 0 0 .5rem; }
+    .body { color: #333; margin: 0 0 1rem; }
+    .body p { margin: 0 0 .5rem; }
+    .body code { background: #f0eee6; padding: 0 .25em; border-radius: 3px; font-size: .92em; }
+    .decision {
+      border-left: 3px solid #c9c9b8;
+      padding: .5rem 0 .5rem .75rem;
+      margin: 1rem 0;
+    }
+    .decision-prompt { font-weight: 600; margin-bottom: .5rem; }
+    .options { display: grid; gap: .5rem; }
+    .option {
+      border: 1px solid #ccc; border-radius: 6px; padding: .75rem;
+      background: #fcfcf8; cursor: pointer; display: block;
+    }
+    .option:hover { border-color: #888; }
+    .option input { margin-right: .5rem; vertical-align: top; margin-top: .3rem; }
+    .option.selected {
+      border-color: #2c7cbb;
+      box-shadow: 0 0 0 2px rgba(44, 124, 187, 0.2);
+      background: #f3f9ff;
+    }
+    .option-label { font-weight: 600; }
+    .badge {
+      display: inline-block; font-size: .7rem; font-weight: 600;
+      background: #2c7cbb; color: white; padding: .05rem .4rem;
+      border-radius: 3px; margin-left: .4rem; vertical-align: 2px;
+    }
+    .option-description { color: #555; font-size: .92rem; margin: .25rem 0 0; }
+    .preview { margin-top: .5rem; }
+    .preview pre {
+      background: #f4f4ee; border-radius: 4px;
+      padding: .5rem .75rem; overflow: auto; font-size: .82rem;
+      margin: 0; line-height: 1.45;
+    }
+    .preview iframe {
+      width: 100%; min-height: 160px;
+      border: 1px solid #ddd; border-radius: 4px; background: #fff;
+    }
+    details.comment { margin: .5rem 0 0; }
+    details.comment summary {
+      cursor: pointer; color: #2c7cbb; font-size: .9rem;
+      user-select: none;
+    }
+    details.comment textarea {
+      width: 100%; min-height: 4em; margin-top: .5rem;
+      font: inherit; padding: .5rem; border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    #notes {
+      width: 100%; min-height: 8em; font: inherit;
+      padding: .75rem; border-radius: 6px; border: 1px solid #ccc;
+    }
+    #submit-row { margin: 1.5rem 0 .5rem; display: flex; gap: 1rem; align-items: center; }
+    button#submit {
+      background: #2c7cbb; color: white; border: 0;
+      padding: .75rem 1.5rem; font: inherit; font-weight: 600;
+      border-radius: 6px; cursor: pointer;
+    }
+    button#submit:hover { background: #235e8e; }
+    #banner {
+      padding: .75rem 1rem; border-radius: 6px;
+      background: #fff4d6; border: 1px solid #e2c763;
+      margin: 1rem 0; display: none;
+    }
+    #banner h3 { margin: 0 0 .5rem; font-size: 1rem; }
+    #banner pre {
+      background: rgba(0,0,0,.04); padding: .6rem .75rem;
+      border-radius: 4px; overflow: auto; font-size: .82rem;
+      max-height: 320px; margin: 0;
+    }
+    .prototype-notice {
+      background: #eef2ff; border: 1px solid #c8d2f5; color: #2b377a;
+      padding: .6rem .9rem; border-radius: 6px; margin-bottom: 1rem;
+      font-size: .92rem;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #1c1c1a; color: #eee; }
+      .subtitle { color: #aaa; }
+      section.spec-section { background: #252523; border-color: #3a3a36; }
+      .option { background: #1f1f1d; border-color: #3a3a36; }
+      .option.selected { background: #1a3147; border-color: #4ea2e0; }
+      .preview pre, .body code { background: #2a2a27; }
+      details.comment textarea, #notes {
+        background: #1f1f1d; color: #eee; border-color: #3a3a36;
+      }
+      #banner { background: #3a330e; border-color: #7c6a26; color: #fbe9a1; }
+      #banner pre { background: rgba(255,255,255,.06); }
+      .prototype-notice { background: #1f2647; border-color: #36437f; color: #c8d2f5; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Speckle</h1>
+    <p class="subtitle">Agent-driven spec building tool — interactive plan, rendered as a static prototype of speckle itself.</p>
+  </header>
+
+  <div class="prototype-notice">
+    <strong>Prototype.</strong> This is a single static HTML file mimicking what
+    <code>speckle serve</code> renders. There's no server: clicking <em>Submit
+    to agent</em> dumps the would-be submission JSON into a banner below the form
+    instead of POSTing it.
+  </div>
+
+  <!-- ============================================================== -->
+  <section class="spec-section" data-section-id="overview">
+    <h2>1. What speckle is</h2>
+    <div class="body">
+      <p>Speckle is a loop between an AI agent and a human, mediated by a YAML
+      file and a tiny Go server.</p>
+      <ol>
+        <li>The agent writes a <code>.speckle</code> file describing a plan
+        as <em>sections</em> with embedded <em>decisions</em>; each decision
+        has labelled <em>options</em>, optional sandboxed <em>previews</em>,
+        and a place for the user to leave comments.</li>
+        <li><code>speckle serve plan.speckle</code> renders the file as HTML
+        and waits.</li>
+        <li>The user picks options, leaves comments, hits Submit.</li>
+        <li>The agent reads the submission via <code>speckle await</code>,
+        emits a YAML overlay, applies it with <code>speckle patch</code>.
+        The page hot-reloads and the loop continues.</li>
+      </ol>
+    </div>
+    <details class="comment">
+      <summary>Add section comment</summary>
+      <textarea name="section-comment-overview" placeholder="Notes about this section…"></textarea>
+    </details>
+  </section>
+
+  <!-- ============================================================== -->
+  <section class="spec-section" data-section-id="file-format">
+    <h2>2. File format</h2>
+    <div class="body">
+      <p>How the agent writes the plan to disk. The format has to be
+      easy for the agent to author and patch, and easy for the renderer
+      to validate.</p>
+    </div>
+
+    <div class="decision" data-decision-id="file-format">
+      <div class="decision-prompt">What does a speckle file look like on disk?</div>
+      <div class="options">
+
+        <label class="option selected" data-option-id="yaml-structured">
+          <input type="radio" name="decision-file-format" value="yaml-structured" checked>
+          <span class="option-label">YAML, strongly structured</span>
+          <span class="badge">current</span>
+          <div class="option-description">Schema with sections → decisions → options. Predictable for the renderer, easy to validate.</div>
+          <div class="preview">
+            <pre><code>version: 1
+title: Plan title
+sections:
+  - id: auth
+    heading: Authentication
+    body: |
+      Markdown prose.
+    decisions:
+      - id: strategy
+        prompt: Which auth method?
+        options:
+          - id: jwt
+            label: JWT
+            preview: { kind: code, language: js, body: "..." }
+        default: jwt
+        selected: null</code></pre>
+          </div>
+        </label>
+
+        <label class="option" data-option-id="markdown-fenced">
+          <input type="radio" name="decision-file-format" value="markdown-fenced">
+          <span class="option-label">Markdown with fenced option blocks</span>
+          <div class="option-description">Human-readable plan; decisions live inside <code>```speckle-option</code> fences. Free-form but harder to validate.</div>
+          <div class="preview">
+            <pre><code># Authentication
+
+Markdown prose here.
+
+```speckle-decision id=strategy default=jwt
+- id: jwt    label: JWT      preview: ```js\njwt.sign(...)\n```
+- id: session label: Session preview: ```js\nreq.session...\n```
+```</code></pre>
+          </div>
+        </label>
+
+        <label class="option" data-option-id="json">
+          <input type="radio" name="decision-file-format" value="json">
+          <span class="option-label">JSON</span>
+          <div class="option-description">Machine-friendly; loses YAML's multi-line string ergonomics for prose and previews.</div>
+          <div class="preview">
+            <pre><code>{
+  "version": 1,
+  "sections": [{
+    "id": "auth",
+    "decisions": [{
+      "id": "strategy",
+      "options": [
+        {"id": "jwt", "label": "JWT"}
+      ]
+    }]
+  }]
+}</code></pre>
+          </div>
+        </label>
+
+        <label class="option" data-option-id="dsl">
+          <input type="radio" name="decision-file-format" value="dsl">
+          <span class="option-label">Custom mini-DSL</span>
+          <div class="option-description">Purpose-built syntax. Most expressive, but every consumer needs a parser.</div>
+          <div class="preview">
+            <pre><code>section auth "Authentication" {
+  decision strategy "Which auth method?" {
+    option jwt "JWT" {
+      preview code/js: jwt.sign(...)
+    }
+    default jwt
+  }
+}</code></pre>
+          </div>
+        </label>
+
+      </div>
+      <details class="comment">
+        <summary>Add comment</summary>
+        <textarea name="decision-comment-file-format" placeholder="Notes about this decision…"></textarea>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============================================================== -->
+  <section class="spec-section" data-section-id="loop">
+    <h2>3. Agent ↔ server handoff</h2>
+    <div class="body">
+      <p>How the agent receives the user's submission. The agent process
+      doesn't normally listen on a port, so the design picks who blocks
+      where.</p>
+    </div>
+
+    <div class="decision" data-decision-id="loop-mechanism">
+      <div class="decision-prompt">How does the agent receive the user's submission?</div>
+      <div class="options">
+
+        <label class="option selected" data-option-id="long-lived-http">
+          <input type="radio" name="decision-loop-mechanism" value="long-lived-http" checked>
+          <span class="option-label">Long-lived HTTP server with long-poll client</span>
+          <span class="badge">current</span>
+          <div class="option-description">Server stays up across iterations. <code>speckle await</code> long-polls <code>/await</code> and prints the submission JSON to stdout.</div>
+          <div class="preview">
+            <pre><code># Agent loop
+$ speckle serve plan.speckle &amp;        # long-lived
+$ speckle await plan.speckle &gt; sub.json # blocks until user submits
+# ...agent computes overlay...
+$ speckle patch plan.speckle &lt; overlay.yaml
+$ speckle await plan.speckle &gt; sub.json # next round</code></pre>
+          </div>
+        </label>
+
+        <label class="option" data-option-id="file-callback">
+          <input type="radio" name="decision-loop-mechanism" value="file-callback">
+          <span class="option-label">File-on-disk callback</span>
+          <div class="option-description">Server writes <code>plan.submission.json</code> on submit; agent polls / fsnotifies for it.</div>
+          <div class="preview">
+            <pre><code>$ speckle serve plan.speckle &amp;
+# ...user submits...
+# server writes plan.submission.json
+$ jq . plan.submission.json   # agent picks it up</code></pre>
+          </div>
+        </label>
+
+        <label class="option" data-option-id="serve-exits">
+          <input type="radio" name="decision-loop-mechanism" value="serve-exits">
+          <span class="option-label">Server exits with submission on stdout</span>
+          <div class="option-description">No long-lived process: <code>speckle serve</code> blocks until first submit, prints JSON, exits. Restart for next round.</div>
+          <div class="preview">
+            <pre><code>$ speckle serve plan.speckle &gt; sub.json
+# blocks, then exits 0 after submit
+$ speckle patch plan.speckle &lt; overlay.yaml
+$ speckle serve plan.speckle &gt; sub.json
+# user reopens browser each iteration</code></pre>
+          </div>
+        </label>
+
+      </div>
+      <details class="comment">
+        <summary>Add comment</summary>
+        <textarea name="decision-comment-loop-mechanism" placeholder="Notes about this decision…"></textarea>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============================================================== -->
+  <section class="spec-section" data-section-id="patch">
+    <h2>4. Patch format</h2>
+    <div class="body">
+      <p>How the agent describes its next-round edits to the
+      <code>.speckle</code> file.</p>
+    </div>
+
+    <div class="decision" data-decision-id="patch-format">
+      <div class="decision-prompt">How does the agent emit a patch?</div>
+      <div class="options">
+
+        <label class="option selected" data-option-id="yaml-overlay">
+          <input type="radio" name="decision-patch-format" value="yaml-overlay" checked>
+          <span class="option-label">YAML overlay (deep-merge + id-keyed lists)</span>
+          <span class="badge">current</span>
+          <div class="option-description">Maps deep-merge; <code>null</code> deletes; lists of items with <code>id</code> merge by id; <code>_delete: true</code> drops a list item.</div>
+          <div class="preview">
+            <pre><code>sections:
+  - id: auth
+    decisions:
+      - id: strategy
+        default: session         # flip default
+        options:
+          - id: oidc             # append new option
+            label: OIDC
+          - id: jwt
+            _delete: true        # drop existing option</code></pre>
+          </div>
+        </label>
+
+        <label class="option" data-option-id="json-patch">
+          <input type="radio" name="decision-patch-format" value="json-patch">
+          <span class="option-label">RFC 6902 JSON Patch</span>
+          <div class="option-description">Precise, well-known. Verbose path syntax; awkward for inserting nested option subtrees.</div>
+          <div class="preview">
+            <pre><code>[
+  { "op": "replace",
+    "path": "/sections/0/decisions/0/default",
+    "value": "session" },
+  { "op": "add",
+    "path": "/sections/0/decisions/0/options/-",
+    "value": { "id": "oidc", "label": "OIDC" } }
+]</code></pre>
+          </div>
+        </label>
+
+        <label class="option" data-option-id="full-rewrite">
+          <input type="radio" name="decision-patch-format" value="full-rewrite">
+          <span class="option-label">Full file rewrite</span>
+          <div class="option-description">Agent emits the entire new <code>.speckle</code> each round. Trivially simple, expensive on tokens for big plans.</div>
+          <div class="preview">
+            <pre><code>$ speckle write plan.speckle &lt;&lt;'EOF'
+version: 1
+title: ...
+# ... entire plan re-emitted ...
+EOF</code></pre>
+          </div>
+        </label>
+
+      </div>
+      <details class="comment">
+        <summary>Add comment</summary>
+        <textarea name="decision-comment-patch-format" placeholder="Notes about this decision…"></textarea>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============================================================== -->
+  <section class="spec-section" data-section-id="previews">
+    <h2>5. HTML preview sandboxing</h2>
+    <div class="body">
+      <p>Options with <code>kind: html</code> get rendered as live mockups.
+      Where should we draw the line on what they can do?</p>
+    </div>
+
+    <div class="decision" data-decision-id="sandbox-mode">
+      <div class="decision-prompt">How locked down are HTML previews?</div>
+      <div class="options">
+
+        <label class="option selected" data-option-id="strict-sandbox">
+          <input type="radio" name="decision-sandbox-mode" value="strict-sandbox" checked>
+          <span class="option-label">Strict <code>&lt;iframe sandbox srcdoc&gt;</code> — no scripts, no network</span>
+          <span class="badge">current</span>
+          <div class="option-description">Styled markup only. Safe; mocks look static.</div>
+          <div class="preview">
+            <iframe sandbox srcdoc='&lt;div style=&quot;display:flex;align-items:center;justify-content:center;min-height:120px;background:#f4f4ee;font-family:sans-serif;&quot;&gt;&lt;form style=&quot;background:white;padding:1rem 1.5rem;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);&quot;&gt;&lt;h3 style=&quot;margin:0 0 .5rem;&quot;&gt;Log in&lt;/h3&gt;&lt;input placeholder=&quot;email&quot; style=&quot;display:block;margin:.25rem 0;padding:.4rem;border:1px solid #ccc;border-radius:4px;width:200px;&quot;&gt;&lt;input type=&quot;password&quot; placeholder=&quot;password&quot; style=&quot;display:block;margin:.25rem 0;padding:.4rem;border:1px solid #ccc;border-radius:4px;width:200px;&quot;&gt;&lt;button style=&quot;margin-top:.5rem;padding:.4rem .8rem;background:#2c7cbb;color:white;border:0;border-radius:4px;&quot;&gt;Sign in&lt;/button&gt;&lt;/form&gt;&lt;/div&gt;'></iframe>
+          </div>
+        </label>
+
+        <label class="option" data-option-id="sandbox-scripts">
+          <input type="radio" name="decision-sandbox-mode" value="sandbox-scripts">
+          <span class="option-label">Sandbox <code>allow-scripts</code> — JS in previews works</span>
+          <div class="option-description">Interactive mockups (hover, state). Per-option opt-in only; preview JS can still talk back to the page if <code>allow-same-origin</code> is added.</div>
+          <div class="preview">
+            <iframe sandbox="allow-scripts" srcdoc='&lt;div style=&quot;font-family:sans-serif;padding:1rem;&quot;&gt;&lt;p&gt;Live counter (would only work with allow-scripts):&lt;/p&gt;&lt;button id=&quot;b&quot; style=&quot;padding:.4rem .8rem;background:#2c7cbb;color:white;border:0;border-radius:4px;&quot;&gt;Clicked 0 times&lt;/button&gt;&lt;script&gt;let n=0;document.getElementById(&quot;b&quot;).onclick=()=&gt;{n++;b.textContent=&quot;Clicked &quot;+n+&quot; times&quot;}&lt;/script&gt;&lt;/div&gt;'></iframe>
+          </div>
+        </label>
+
+        <label class="option" data-option-id="no-iframe">
+          <input type="radio" name="decision-sandbox-mode" value="no-iframe">
+          <span class="option-label">No iframe — render inline into the page</span>
+          <div class="option-description">Smallest visual seams; the preview can collide with page CSS and (if scripts were allowed) escape entirely. Unsafe for any untrusted spec source.</div>
+          <div class="preview">
+            <pre><code>// renderer would do:
+optionEl.insertAdjacentHTML('beforeend', option.preview.body);
+// preview inherits page styles, no isolation</code></pre>
+          </div>
+        </label>
+
+      </div>
+      <details class="comment">
+        <summary>Add comment</summary>
+        <textarea name="decision-comment-sandbox-mode" placeholder="Notes about this decision…"></textarea>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============================================================== -->
+  <section class="spec-section" data-section-id="reload">
+    <h2>6. Browser reload channel</h2>
+    <div class="body">
+      <p>When the agent's <code>speckle patch</code> rewrites the file,
+      the browser needs to refresh.</p>
+    </div>
+
+    <div class="decision" data-decision-id="reload-channel">
+      <div class="decision-prompt">How does the browser learn about file changes?</div>
+      <div class="options">
+
+        <label class="option selected" data-option-id="sse">
+          <input type="radio" name="decision-reload-channel" value="sse" checked>
+          <span class="option-label">Server-Sent Events</span>
+          <span class="badge">current</span>
+          <div class="option-description">One-way HTTP stream from server to browser. Built-in <code>EventSource</code>, auto-reconnects, no extra deps.</div>
+          <div class="preview">
+            <pre><code>const es = new EventSource('/events');
+es.addEventListener('reload', () =&gt; location.reload());</code></pre>
+          </div>
+        </label>
+
+        <label class="option" data-option-id="websocket">
+          <input type="radio" name="decision-reload-channel" value="websocket">
+          <span class="option-label">WebSocket</span>
+          <div class="option-description">Bidirectional; overkill for the one-way reload signal we actually need.</div>
+          <div class="preview">
+            <pre><code>const ws = new WebSocket(`ws://${location.host}/ws`);
+ws.onmessage = (e) =&gt; {
+  if (JSON.parse(e.data).type === 'reload') location.reload();
+};</code></pre>
+          </div>
+        </label>
+
+        <label class="option" data-option-id="polling">
+          <input type="radio" name="decision-reload-channel" value="polling">
+          <span class="option-label">ETag polling</span>
+          <div class="option-description">Browser <code>fetch(&apos;/spec&apos;)</code> every N seconds with <code>If-None-Match</code>. Simple, but laggy and noisy.</div>
+          <div class="preview">
+            <pre><code>let etag = '';
+setInterval(async () =&gt; {
+  const r = await fetch('/spec', { headers: { 'If-None-Match': etag } });
+  if (r.status === 200) { etag = r.headers.get('etag'); location.reload(); }
+}, 2000);</code></pre>
+          </div>
+        </label>
+
+      </div>
+      <details class="comment">
+        <summary>Add comment</summary>
+        <textarea name="decision-comment-reload-channel" placeholder="Notes about this decision…"></textarea>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============================================================== -->
+  <section class="spec-section" data-section-id="ordering">
+    <h2>7. Open: YAML key ordering on patch</h2>
+    <div class="body">
+      <p>Today, <code>speckle patch</code> round-trips YAML through
+      <code>map[string]any</code>, so output keys come back alphabetically
+      sorted. Functional, but the diff between iterations is uglier than
+      it needs to be.</p>
+    </div>
+
+    <div class="decision" data-decision-id="yaml-ordering">
+      <div class="decision-prompt">Preserve the agent's key order across patches?</div>
+      <div class="options">
+
+        <label class="option selected" data-option-id="alpha-sort">
+          <input type="radio" name="decision-yaml-ordering" value="alpha-sort" checked>
+          <span class="option-label">Leave as alphabetical (current)</span>
+          <span class="badge">current</span>
+          <div class="option-description">Cheapest. File diffs will reshuffle on every patch.</div>
+          <div class="preview">
+            <pre><code># Before patch (agent-authored order):
+- id: jwt
+  label: JWT
+  description: Stateless
+
+# After patch (alphabetical):
+- description: Stateless
+  id: jwt
+  label: JWT</code></pre>
+          </div>
+        </label>
+
+        <label class="option" data-option-id="yaml-node">
+          <input type="radio" name="decision-yaml-ordering" value="yaml-node">
+          <span class="option-label">Route the overlay through <code>yaml.Node</code></span>
+          <div class="option-description">Preserves key order and comments. ~150 lines of additional Go for the node-aware merge.</div>
+          <div class="preview">
+            <pre><code>// Merge at the yaml.Node level:
+func mergeNode(base, overlay *yaml.Node) *yaml.Node {
+  // walk MappingNode pairs, preserve order
+  // recurse into matching keys
+  // append new keys at end
+}</code></pre>
+          </div>
+        </label>
+
+        <label class="option" data-option-id="fixed-key-order">
+          <input type="radio" name="decision-yaml-ordering" value="fixed-key-order">
+          <span class="option-label">Marshal with a fixed key order</span>
+          <div class="option-description">Define a canonical order (<code>id, label, description, preview, ...</code>) and emit that. Predictable, but loses any author intent.</div>
+          <div class="preview">
+            <pre><code>// custom Marshaler on Option that emits keys
+// in a fixed canonical order regardless of input</code></pre>
+          </div>
+        </label>
+
+      </div>
+      <details class="comment">
+        <summary>Add comment</summary>
+        <textarea name="decision-comment-yaml-ordering" placeholder="Notes about this decision…"></textarea>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============================================================== -->
+  <section class="spec-section" data-section-id="look">
+    <h2>8. Rendered page look — for reference</h2>
+    <div class="body">
+      <p>For context, here's a minimal mockup of how
+      <code>speckle serve</code> renders an actual <code>.speckle</code>
+      file. (The page you're reading uses the same styling.)</p>
+    </div>
+    <div class="preview">
+      <iframe sandbox srcdoc='&lt;style&gt;body{font:14px/1.5 -apple-system,sans-serif;background:#fafaf7;color:#1a1a1a;margin:1rem;}h2{font-size:1rem;margin:0 0 .25rem;}.sec{background:#fff;border:1px solid #ddd;border-radius:8px;padding:.75rem 1rem;margin-bottom:.5rem;}.dec{border-left:3px solid #c9c9b8;padding:.25rem 0 .25rem .5rem;margin:.5rem 0;}.opt{border:1px solid #ccc;border-radius:6px;padding:.5rem;background:#fcfcf8;margin:.25rem 0;font-size:.85rem;}.opt.sel{border-color:#2c7cbb;background:#f3f9ff;box-shadow:0 0 0 2px rgba(44,124,187,.2);}button{background:#2c7cbb;color:white;border:0;padding:.4rem .8rem;border-radius:4px;font:inherit;font-weight:600;}&lt;/style&gt;&lt;div class=&quot;sec&quot;&gt;&lt;h2&gt;Authentication method&lt;/h2&gt;&lt;div class=&quot;dec&quot;&gt;&lt;div style=&quot;font-weight:600;font-size:.9rem;margin-bottom:.25rem;&quot;&gt;Which auth method?&lt;/div&gt;&lt;div class=&quot;opt sel&quot;&gt;&lt;input type=&quot;radio&quot; checked&gt; &lt;b&gt;JWT&lt;/b&gt; &lt;span style=&quot;color:#555;&quot;&gt;Stateless tokens&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;opt&quot;&gt;&lt;input type=&quot;radio&quot;&gt; &lt;b&gt;Server-side session&lt;/b&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;button&gt;Submit to agent&lt;/button&gt;'></iframe>
+    </div>
+    <details class="comment">
+      <summary>Add section comment</summary>
+      <textarea name="section-comment-look" placeholder="Notes about this section…"></textarea>
+    </details>
+  </section>
+
+  <!-- ============================================================== -->
+  <section class="spec-section">
+    <h2>Further notes</h2>
+    <textarea id="notes" placeholder="Anything else for the agent? Open questions, follow-ups, things missing from the plan…"></textarea>
+  </section>
+
+  <div id="submit-row">
+    <button id="submit">Submit to agent</button>
+    <span id="status"></span>
+  </div>
+
+  <div id="banner" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      const SPEC_VERSION = 1;
+
+      // Option-card highlighting + radio change handling.
+      document.querySelectorAll('.options').forEach(group => {
+        group.addEventListener('change', (ev) => {
+          if (ev.target.matches('input[type=radio]')) {
+            group.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+            ev.target.closest('.option').classList.add('selected');
+          }
+        });
+      });
+
+      const banner = document.getElementById('banner');
+      const status = document.getElementById('status');
+      const submit = document.getElementById('submit');
+
+      submit.addEventListener('click', () => {
+        const decisions = {};
+        document.querySelectorAll('.decision').forEach(d => {
+          const id = d.dataset.decisionId;
+          const radio = d.querySelector('input[type=radio]:checked');
+          const ta = d.querySelector('textarea[name="decision-comment-' + id + '"]');
+          const comment = ta ? ta.value.trim() : '';
+          if (radio || comment) {
+            const entry = { selected: radio ? radio.value : '' };
+            if (comment) entry.comment = comment;
+            decisions[id] = entry;
+          }
+        });
+
+        const sectionComments = {};
+        document.querySelectorAll('section.spec-section').forEach(s => {
+          const id = s.dataset.sectionId;
+          if (!id) return;
+          const ta = s.querySelector('textarea[name="section-comment-' + id + '"]');
+          if (ta && ta.value.trim()) sectionComments[id] = ta.value.trim();
+        });
+
+        const notes = document.getElementById('notes').value.trim();
+        const submission = {
+          spec_version: SPEC_VERSION,
+          decisions,
+          ...(Object.keys(sectionComments).length ? { section_comments: sectionComments } : {}),
+          ...(notes ? { notes } : {}),
+        };
+
+        banner.innerHTML =
+          '<h3>Would-be submission (prototype — no server)</h3>' +
+          '<p style="margin:0 0 .5rem;font-size:.9rem;">In real <code>speckle serve</code>, this JSON would be POSTed to <code>/submit</code> and returned by <code>speckle await</code>.</p>' +
+          '<pre></pre>';
+        banner.querySelector('pre').textContent = JSON.stringify(submission, null, 2);
+        banner.style.display = 'block';
+        status.textContent = '';
+        banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    })();
+  </script>
+</body>
+</html>
