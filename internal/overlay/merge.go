@@ -1,21 +1,14 @@
-package main
+package overlay
 
 import "gopkg.in/yaml.v3"
 
-// mergeOverlayNodes deep-merges overlay into base at the yaml.Node level,
-// preserving the base document's key order and (where unchanged) its
-// comments. Rules:
-//
-//   - Maps merge by key. A null value in the overlay deletes that key.
-//   - Lists of mappings where every item has an "id" field merge by id;
-//     matching items deep-merge, unmatched overlay items are appended,
-//     an overlay item with "_delete: true" removes the matching base item.
-//   - All other values (scalars, mismatched kinds, lists without ids)
-//     are replaced wholesale by the overlay.
-//
-// base is mutated in place where possible; the returned node may be base
-// (after edits) or overlay (for wholesale replacements).
-func mergeOverlayNodes(base, overlay *yaml.Node) *yaml.Node {
+type merger struct{}
+
+func (m *merger) Merge(base, overlay *yaml.Node) *yaml.Node {
+	return mergeNodes(base, overlay)
+}
+
+func mergeNodes(base, overlay *yaml.Node) *yaml.Node {
 	if base.Kind == yaml.MappingNode && overlay.Kind == yaml.MappingNode {
 		return mergeMapping(base, overlay)
 	}
@@ -34,7 +27,7 @@ func mergeMapping(base, overlay *yaml.Node) *yaml.Node {
 			continue
 		}
 		if idx := mapKeyIndex(base, k.Value); idx >= 0 {
-			base.Content[idx+1] = mergeOverlayNodes(base.Content[idx+1], v)
+			base.Content[idx+1] = mergeNodes(base.Content[idx+1], v)
 		} else {
 			base.Content = append(base.Content, k, v)
 		}
@@ -58,7 +51,7 @@ func mergeSequenceByID(base, overlay *yaml.Node) *yaml.Node {
 			continue
 		}
 		if i, ok := idIdx[id]; ok {
-			base.Content[i] = mergeOverlayNodes(base.Content[i], oItem)
+			base.Content[i] = mergeNodes(base.Content[i], oItem)
 		} else {
 			idIdx[id] = len(base.Content)
 			base.Content = append(base.Content, oItem)

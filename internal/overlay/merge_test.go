@@ -1,4 +1,4 @@
-package main
+package overlay_test
 
 import (
 	"bytes"
@@ -6,10 +6,12 @@ import (
 	"testing"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/ptetau/speckle/internal/overlay"
 )
 
 // merge runs the same pipeline as `speckle patch`: parse both as nodes,
-// merge, re-marshal. Returns the resulting YAML as a string.
+// drive Merger.Merge, re-marshal. Returns YAML as a string.
 func merge(t *testing.T, baseStr, overlayStr string) string {
 	t.Helper()
 	var baseDoc, overlayDoc yaml.Node
@@ -19,7 +21,7 @@ func merge(t *testing.T, baseStr, overlayStr string) string {
 	if err := yaml.Unmarshal([]byte(overlayStr), &overlayDoc); err != nil {
 		t.Fatalf("overlay yaml: %v", err)
 	}
-	merged := mergeOverlayNodes(baseDoc.Content[0], overlayDoc.Content[0])
+	merged := overlay.NewMerger().Merge(baseDoc.Content[0], overlayDoc.Content[0])
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	enc.SetIndent(2)
@@ -46,10 +48,7 @@ func TestMergeMapDeep(t *testing.T) {
 }
 
 func TestMergeNullDeletes(t *testing.T) {
-	got := merge(t,
-		"a: 1\nb: 2\nc: 3\n",
-		"b: null\n",
-	)
+	got := merge(t, "a: 1\nb: 2\nc: 3\n", "b: null\n")
 	eq(t, got, "a: 1\nc: 3")
 }
 
@@ -119,4 +118,3 @@ sections:
     heading: First
     body: revised`)
 }
-

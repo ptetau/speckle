@@ -9,6 +9,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/ptetau/speckle/internal/overlay"
 	"github.com/ptetau/speckle/internal/spec"
 )
 
@@ -41,7 +42,7 @@ func runPatch(args []string) error {
 		return errors.New("overlay is empty")
 	}
 
-	merged := mergeOverlayNodes(baseDoc.Content[0], overlayDoc.Content[0])
+	merged := overlay.NewMerger().Merge(baseDoc.Content[0], overlayDoc.Content[0])
 
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
