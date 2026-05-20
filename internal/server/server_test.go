@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -139,6 +140,47 @@ func TestSubmitReplacesPreviousUnconsumed(t *testing.T) {
 	d := b["decisions"].(map[string]any)["d"].(map[string]any)
 	if d["selected"] != "b" {
 		t.Fatalf("expected latest (b), got: %+v", d)
+	}
+}
+
+func TestSpecEndpointReturnsJSON(t *testing.T) {
+	ts, _ := newTestServer(t)
+	r, err := http.Get(ts.URL + "/spec")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Body.Close()
+	if r.StatusCode != 200 {
+		t.Fatalf("status: %d", r.StatusCode)
+	}
+	if ct := r.Header.Get("Content-Type"); !strings.Contains(ct, "application/json") {
+		t.Fatalf("Content-Type: %q", ct)
+	}
+	var body map[string]any
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if body["title"] != "t" || body["version"].(float64) != 1 {
+		t.Fatalf("decoded: %+v", body)
+	}
+}
+
+func TestSpecEndpointReturnsRawYAMLWhenAsked(t *testing.T) {
+	ts, _ := newTestServer(t)
+	r, err := http.Get(ts.URL + "/spec?raw=1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Body.Close()
+	if r.StatusCode != 200 {
+		t.Fatalf("status: %d", r.StatusCode)
+	}
+	if ct := r.Header.Get("Content-Type"); !strings.Contains(ct, "yaml") {
+		t.Fatalf("Content-Type: %q", ct)
+	}
+	body, _ := io.ReadAll(r.Body)
+	if !strings.HasPrefix(string(body), "version: 1") {
+		t.Fatalf("not raw YAML: %s", string(body))
 	}
 }
 

@@ -53,6 +53,14 @@ func TestRenderEmitsOptionsAndSandboxedPreviews(t *testing.T) {
 	if !strings.Contains(out, `iframe sandbox="allow-scripts" srcdoc=`) {
 		t.Errorf("html preview missing sandbox attribute: %s", excerpt(out))
 	}
+	// SECURITY: previews must not be granted allow-same-origin (would let
+	// preview JS reach the parent page) or allow-top-navigation (would
+	// let them redirect the browser away). The README promises this.
+	for _, forbidden := range []string{"allow-same-origin", "allow-top-navigation", "allow-popups", "allow-forms"} {
+		if strings.Contains(out, forbidden) {
+			t.Errorf("iframe sandbox should not grant %q: %s", forbidden, excerpt(out))
+		}
+	}
 	// raw script content must be escaped, not interpolated literally
 	if strings.Contains(out, `onclick="alert(1)`) {
 		t.Errorf("preview HTML leaked unescaped into attribute: %s", excerpt(out))

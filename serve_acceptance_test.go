@@ -195,3 +195,62 @@ type httpErr struct {
 }
 
 func (e *httpErr) Error() string { return e.body }
+
+// TestServeCleansUpLockfileOnShutdown: when the server is interrupted,
+// it removes the lockfile so a subsequent `speckle await` doesn't
+// mistakenly try to talk to a dead process.
+func TestServeCleansUpLockfileOnShutdown(t *testing.T) {
+	url, specPath, stop := startServer(t, minSpec)
+	lockPath := specPath + ".lock"
+
+	// Sanity: lockfile exists while serving.
+	if _, err := os.Stat(lockPath); err != nil {
+		t.Fatalf("lockfile missing while serving: %v", err)
+	}
+	// And the server actually responds.
+	r, err := http.Get(url + "/")
+	if err != nil || r.StatusCode != 200 {
+		t.Fatalf("server unreachable: %v %v", err, r)
+	}
+	r.Body.Close()
+
+	// Now shut down and wait for the process to exit.
+	stop()
+
+	// Lockfile must be gone.
+	if _, err := os.Stat(lockPath); !os.IsNotExist(err) {
+		t.Fatalf("lockfile not cleaned up after shutdown (err=%v)", err)
+	}
+}
+
+// TestServesExampleFileEndToEnd: the canonical sample plan we ship
+// renders without error and the rendered HTML includes its decisions.
+func TestServesExampleFileEndToEnd(t *testing.T) {
+	example, err := os.ReadFile("examples/example.speckle")
+	if err != nil {
+		t.Fatal(err)
+	}
+	url, _, stop := startServer(t, string(example))
+	defer stop()
+
+	r, err := http.Get(url + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Body.Close()
+	if r.StatusCode != 200 {
+		t.Fatalf("index: %d", r.StatusCode)
+	}
+	body, _ := io.ReadAll(r.Body)
+	html := string(body)
+	// The example has a JWT vs Session decision and a Centered vs Split UI decision.
+	for _, want := range []string{
+		"Authentication method", "JWT (stateless)", "Server-side session",
+		"Login UI layout", "Centered card", "Split hero",
+		`iframe sandbox="allow-scripts"`,
+	} {
+		if !strings.Contains(html, want) {
+			t.Errorf("rendered example missing %q", want)
+		}
+	}
+}
