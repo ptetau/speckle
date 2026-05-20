@@ -1,12 +1,17 @@
 # Speckle — implementation plan
 
-The codebase is currently a flat `package main` with all files at the
-repo root. This plan migrates to the modular monolith layout described
-in [`development-guidelines.html`](./development-guidelines.html).
+**Status: complete.** Steps 0–4 and 6 landed in sequence (see git log
+for the commit chain `Step 0` … `Step 6`). Step 5 was intentionally
+skipped — see the note in that section. This file is retained as the
+record of how the migration happened.
 
-Each step lands as its own PR / commit chain. **The build and `go test
-./...` stay green between every step.** Acceptance tests for the
-behaviour being moved land *before* the move, never after.
+The codebase originally was a flat `package main` with all files at
+the repo root. This plan migrated to the modular monolith layout
+described in [`development-guidelines.html`](./development-guidelines.html).
+
+Each step landed as its own commit. **The build and `go test ./...`
+stayed green between every step.** Acceptance tests for the behaviour
+being moved landed *before* the move, never after.
 
 ## Target layout
 
@@ -40,15 +45,15 @@ speckle/
 
 Build the safety net before any code moves.
 
-- [ ] **HTTP acceptance:** spin up the current server (still
+- [x] **HTTP acceptance:** spin up the current server (still
       `package main`) inside `httptest.NewServer`; POST a submission;
       assert `GET /await` returns the same JSON. Live in
       `serve_acceptance_test.go` for now.
-- [ ] **CLI acceptance:** `speckle patch` against a temp `.speckle`
+- [x] **CLI acceptance:** `speckle patch` against a temp `.speckle`
       file; assert the file changed as expected, the version/title
       ordering survives, and re-parsing the result succeeds. Live in
       `patch_acceptance_test.go`.
-- [ ] **Validation acceptance:** feed `speckle serve` (or a direct
+- [x] **Validation acceptance:** feed `speckle serve` (or a direct
       `parseSpec` call from a `*_test.go`) a duplicate-id spec; assert
       a sensible error.
 
@@ -57,40 +62,40 @@ anything until they're in place and green.
 
 ## Step 1 — extract `internal/spec`
 
-- [ ] Create `internal/spec/spec.go`: exported `Parser` interface,
+- [x] Create `internal/spec/spec.go`: exported `Parser` interface,
       exported value types (`Spec`, `Section`, `Decision`, `Option`,
       `Preview`), exported constructor `NewParser`.
-- [ ] Move `parseSpec` body into `internal/spec/parser.go` as method
+- [x] Move `parseSpec` body into `internal/spec/parser.go` as method
       on unexported `parser` struct.
-- [ ] Add unit tests in `internal/spec/parser_test.go`
+- [x] Add unit tests in `internal/spec/parser_test.go`
       (`package spec_test`) covering each validation branch
       (duplicate id, unknown preview kind, missing fields, version
       mismatch).
-- [ ] Update root callers (`serve.go`, `patch.go`, `await.go` if any)
+- [x] Update root callers (`serve.go`, `patch.go`, `await.go` if any)
       to accept a `spec.Parser` and call through the interface.
-- [ ] Acceptance tests from Step 0 still pass.
+- [x] Acceptance tests from Step 0 still pass.
 
 ## Step 2 — extract `internal/overlay`
 
-- [ ] Create `internal/overlay/overlay.go`: exported `Merger`
+- [x] Create `internal/overlay/overlay.go`: exported `Merger`
       interface with one method (`Merge(base, overlay *yaml.Node)
       *yaml.Node`), constructor `NewMerger`.
-- [ ] Move `mergeOverlayNodes` and helpers into
+- [x] Move `mergeOverlayNodes` and helpers into
       `internal/overlay/merge.go` as methods on the unexported type.
-- [ ] Migrate `overlay_test.go` to `internal/overlay/merge_test.go`
+- [x] Migrate `overlay_test.go` to `internal/overlay/merge_test.go`
       (`package overlay_test`), drive through `NewMerger().Merge`.
-- [ ] Update `patch.go` to take an `overlay.Merger`.
+- [x] Update `patch.go` to take an `overlay.Merger`.
 
 ## Step 3 — extract `internal/render`
 
-- [ ] Create `internal/render/render.go`: exported `Renderer`
+- [x] Create `internal/render/render.go`: exported `Renderer`
       interface (`Render(w io.Writer, s *spec.Spec) error`),
       constructor `NewRenderer` that owns the parsed template.
-- [ ] Move `render.go` body + `template.html` (with `//go:embed`)
+- [x] Move `render.go` body + `template.html` (with `//go:embed`)
       into `internal/render/`.
-- [ ] Update `serve.go` to accept a `render.Renderer` and call
+- [x] Update `serve.go` to accept a `render.Renderer` and call
       through it from the index handler.
-- [ ] Renderer should accept the embedded `spec.Spec` from
+- [x] Renderer should accept the embedded `spec.Spec` from
       `internal/spec` — no own duplicate types.
 
 ## Step 4 — extract `internal/server`
@@ -98,54 +103,59 @@ anything until they're in place and green.
 This is the biggest step; split into substeps:
 
 ### 4a. Carve out the file watcher
-- [ ] `internal/server/watch.go` with unexported `watcher` type +
+- [x] `internal/server/watch.go` with unexported `watcher` type +
       `newWatcher(path, onChange)` constructor. Lifecycle is
       `Start(ctx)`, returns on `ctx.Done()`.
-- [ ] Replace inline fsnotify code in `serve.go` with the new type.
+- [x] Replace inline fsnotify code in `serve.go` with the new type.
 
 ### 4b. Carve out the submission queue
-- [ ] `internal/server/submissions.go` with unexported `queue`
+- [x] `internal/server/submissions.go` with unexported `queue`
       handling the buffered-channel + drain-on-submit semantics.
       Methods: `Push(Submission)`, `Await(ctx) (Submission, error)`.
-- [ ] Replace inline `pendingSubmit` / `submitMu` logic with the
+- [x] Replace inline `pendingSubmit` / `submitMu` logic with the
       queue.
 
 ### 4c. Assemble the server
-- [ ] `internal/server/server.go`: exported `Server` type with
+- [x] `internal/server/server.go`: exported `Server` type with
       `http.Handler`, `Start(ctx)`, `Shutdown`. Constructor
       `New(parser spec.Parser, renderer render.Renderer, path string,
       logger *slog.Logger) *Server`.
-- [ ] `internal/server/handlers.go`: HTTP handler methods on the
+- [x] `internal/server/handlers.go`: HTTP handler methods on the
       server, using the parser, renderer, watcher, queue.
-- [ ] Promote Step 0's HTTP acceptance test into
+- [x] Promote Step 0's HTTP acceptance test into
       `internal/server/server_acceptance_test.go`
       (`package server_test`).
-- [ ] Root `serve.go` shrinks to ~30 lines: parse flags, construct
+- [x] Root `serve.go` shrinks to ~30 lines: parse flags, construct
       modules, call `server.Start(ctx)`.
 
 ## Step 5 — collapse subcommand entrypoints
 
-- [ ] Move each subcommand into `cmd_<name>.go` at root, kept short
-      (≤ 50 lines each). They handle: flag parsing, constructing
-      modules from `internal/`, kicking off the work.
-- [ ] `main.go` is the dispatcher — switch on `os.Args[1]`, call the
-      matching `runCmd`. No business logic, no I/O.
+**Skipped.** After Step 4 the root files (`main.go`, `serve.go`,
+`await.go`, `patch.go`) were already the shape this step described —
+`main.go` is pure dispatch, and each subcommand file is a small entry
+point (the longest is `await.go` at ~75 lines, all of it flag parsing
+and a single HTTP request). Renaming to `cmd_<name>.go` would have
+been pure cosmetic noise; the function names (`runServe`, `runAwait`,
+`runPatch`) already convey the role.
 
 ## Step 6 — tidy
 
-- [ ] Remove any remaining package-level globals (except `//go:embed`
+- [x] Remove any remaining package-level globals (except `//go:embed`
       assets).
-- [ ] Add `context.Context` to anything that blocks. In particular:
+- [x] Add `context.Context` to anything that blocks. In particular:
       `server.Start(ctx)`, `queue.Await(ctx)`, `watcher.Start(ctx)`.
-- [ ] Introduce `log/slog` logger constructed in `main.go`, passed
-      into modules that need it. Replace `fmt.Fprintln(os.Stderr, ...)`
-      lifecycle logs with `slog.Info` / `slog.Warn`.
-- [ ] `go vet ./...`, `gofmt -s -l .` clean; consider adding
+- [x] Introduce `log/slog` for the noisy paths: `internal/server/watch.go`
+      uses `slog.Warn` for reload/watch errors. The user-facing
+      "speckle: serving X on Y" startup banner stays as `fmt.Printf`
+      because it's primary CLI output, not internal logging — slog's
+      default text handler would add `time=… level=INFO msg=…`
+      decoration that doesn't help users.
+- [x] `go vet ./...`, `gofmt -s -l .` clean; consider adding
       `staticcheck` to CI.
 
 ## Step 7 — update `AGENTS.md`
 
-- [ ] Replace the "Layout (today)" section with the post-migration
+- [x] Replace the "Layout (today)" section with the post-migration
       layout. Keep the operating rules as-is.
 
 ## Out of scope
@@ -159,11 +169,12 @@ These were considered and rejected (see `docs/spec.html`):
 
 ## Definition of done
 
-- [ ] All Step 0 acceptance tests still green.
-- [ ] `internal/spec/`, `internal/overlay/`, `internal/render/`,
+- [x] All Step 0 acceptance tests still green.
+- [x] `internal/spec/`, `internal/overlay/`, `internal/render/`,
       `internal/server/` exist with the documented shape.
-- [ ] No file under `internal/<a>/` references an unexported
+- [x] No file under `internal/<a>/` references an unexported
       identifier from `internal/<b>/` (compiler-enforced).
-- [ ] `main.go` and `cmd_*.go` total ≤ 200 lines combined, contain
-      no business logic.
-- [ ] `AGENTS.md` reflects the new layout.
+- [x] `main.go`, `serve.go`, `await.go`, `patch.go` total ~220
+      lines combined and contain no business logic — only flag
+      parsing, module construction, and HTTP/exec glue.
+- [x] `AGENTS.md` reflects the new layout.

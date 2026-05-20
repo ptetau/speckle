@@ -73,4 +73,3 @@ func readLockURL(specPath string) (string, error) {
 	}
 	return l.URL, nil
 }
-

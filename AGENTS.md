@@ -43,19 +43,21 @@ go test ./...               # run all tests (the gate)
 go vet ./...                # static checks
 ```
 
-## Layout (today)
-
-The repo is still flat — see the implementation plan for the move to
-`internal/<module>/`.
+## Layout
 
 ```
-main.go                     # CLI dispatch
-spec.go                     # YAML parse + validate
-overlay.go                  # yaml.Node deep-merge
-patch.go                    # speckle patch
-serve.go                    # HTTP server, SSE, fsnotify
-await.go                    # long-poll client
-render.go template.html     # HTML rendering
-examples/                   # sample .speckle files
-docs/                       # spec, guidelines, plan
+main.go                          # CLI dispatch
+serve.go await.go patch.go       # thin subcommand entrypoints
+internal/
+  spec/                          # YAML parse + validate (Parser interface)
+  overlay/                       # yaml.Node deep-merge  (Merger interface)
+  render/                        # HTML template + Markdown (Renderer interface)
+  server/                        # HTTP + SSE + fsnotify + submission queue (Server interface)
+examples/                        # sample .speckle files
+docs/                            # spec, guidelines, plan
 ```
+
+Each `internal/<module>/` exposes a small interface and a `NewX`
+constructor; the implementation type is unexported. `main.go` and the
+subcommand files are the only places that construct concrete
+implementations and wire them together.

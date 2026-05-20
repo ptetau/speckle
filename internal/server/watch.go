@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
-	"os"
+	"log/slog"
 	"path/filepath"
 	"time"
 
@@ -53,14 +53,14 @@ func (w *watcher) Run(ctx context.Context) {
 			}
 			debounce = time.AfterFunc(80*time.Millisecond, func() {
 				if err := w.onChange(); err != nil {
-					fmt.Fprintln(os.Stderr, "speckle: reload error:", err)
+					slog.Warn("speckle.reload failed", slog.String("err", err.Error()))
 				}
 			})
 		case err, ok := <-w.w.Errors:
 			if !ok {
 				return
 			}
-			fmt.Fprintln(os.Stderr, "speckle: watch error:", err)
+			slog.Warn("speckle.watch error", slog.String("err", err.Error()))
 		case <-ctx.Done():
 			return
 		}
