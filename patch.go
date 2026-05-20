@@ -8,6 +8,8 @@ import (
 	"os"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/ptetau/speckle/internal/spec"
 )
 
 func runPatch(args []string) error {
@@ -51,7 +53,7 @@ func runPatch(args []string) error {
 		return err
 	}
 	out := buf.Bytes()
-	if _, err := parseSpec(out); err != nil {
+	if _, err := spec.NewParser().Parse(out); err != nil {
 		return fmt.Errorf("merged result is not a valid spec: %w", err)
 	}
 	return os.WriteFile(path, out, 0o644)

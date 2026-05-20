@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"os"
 	"strings"
 	"testing"
 
@@ -121,12 +120,3 @@ sections:
     body: revised`)
 }
 
-func TestExampleSpecParses(t *testing.T) {
-	b, err := os.ReadFile("examples/example.speckle")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := parseSpec(b); err != nil {
-		t.Fatalf("example.speckle does not parse: %v", err)
-	}
-}

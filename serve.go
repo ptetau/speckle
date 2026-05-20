@@ -16,6 +16,8 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+
+	"github.com/ptetau/speckle/internal/spec"
 )
 
 type Submission struct {
@@ -31,10 +33,11 @@ type DecisionAnswer struct {
 }
 
 type server struct {
-	path string
+	path   string
+	parser spec.Parser
 
 	mu      sync.RWMutex
-	spec    *Spec
+	spec    *spec.Spec
 	rawYAML []byte
 
 	subsMu sync.Mutex
@@ -57,6 +60,7 @@ func runServe(args []string) error {
 
 	s := &server{
 		path:    path,
+		parser:  spec.NewParser(),
 		subs:    make(map[chan struct{}]struct{}),
 		pending: make(chan Submission, 1),
 	}
@@ -128,12 +132,12 @@ func (s *server) reload() error {
 	if err != nil {
 		return err
 	}
-	spec, err := parseSpec(b)
+	parsed, err := s.parser.Parse(b)
 	if err != nil {
 		return err
 	}
 	s.mu.Lock()
-	s.spec = spec
+	s.spec = parsed
 	s.rawYAML = b
 	s.mu.Unlock()
 	s.broadcastReload()
@@ -189,10 +193,10 @@ func (s *server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.mu.RLock()
-	spec := s.spec
+	sp := s.spec
 	s.mu.RUnlock()
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := renderHTML(w, spec); err != nil {
+	if err := renderHTML(w, sp); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -200,7 +204,7 @@ func (s *server) handleIndex(w http.ResponseWriter, r *http.Request) {
 func (s *server) handleSpec(w http.ResponseWriter, r *http.Request) {
 	s.mu.RLock()
 	raw := s.rawYAML
-	spec := s.spec
+	sp := s.spec
 	s.mu.RUnlock()
 	if r.URL.Query().Get("raw") == "1" {
 		w.Header().Set("Content-Type", "application/x-yaml")
@@ -208,7 +212,7 @@ func (s *server) handleSpec(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(spec)
+	_ = json.NewEncoder(w).Encode(sp)
 }
 
 func (s *server) handleSubmit(w http.ResponseWriter, r *http.Request) {

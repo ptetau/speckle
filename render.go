@@ -7,6 +7,8 @@ import (
 	"io"
 
 	"github.com/yuin/goldmark"
+
+	"github.com/ptetau/speckle/internal/spec"
 )
 
 //go:embed template.html
@@ -19,8 +21,8 @@ var tpl = template.Must(
 	}).ParseFS(embedded, "template.html"),
 )
 
-func renderHTML(w io.Writer, spec *Spec) error {
-	return tpl.ExecuteTemplate(w, "template.html", spec)
+func renderHTML(w io.Writer, s *spec.Spec) error {
+	return tpl.ExecuteTemplate(w, "template.html", s)
 }
 
 func renderMarkdown(s string) template.HTML {
@@ -31,7 +33,7 @@ func renderMarkdown(s string) template.HTML {
 	return template.HTML(buf.String())
 }
 
-func selectedOption(d Decision) string {
+func selectedOption(d spec.Decision) string {
 	if d.Selected != nil && *d.Selected != "" {
 		return *d.Selected
 	}
