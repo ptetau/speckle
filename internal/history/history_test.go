@@ -261,3 +261,218 @@ func assertCommitCount(t *testing.T, repoPath string, n int) {
 		t.Fatalf("want %d commit(s), got %d:\n%s", n, len(lines), out)
 	}
 }
+
+// ── Log() tests ──────────────────────────────────────────────────────────────
+
+func TestLogEmptyWhenNoCommits(t *testing.T) {
+	requireGit(t)
+	dir := t.TempDir()
+	specPath := writeSpec(t, dir)
+
+	mgr, err := history.Open(specPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	entries, err := mgr.Log()
+	if err != nil {
+		t.Fatalf("Log: %v", err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("expected 0 entries before any commit, got %d", len(entries))
+	}
+}
+
+func TestLogReturnsOneEntryPerCommit(t *testing.T) {
+	requireGit(t)
+	dir := t.TempDir()
+	specPath := writeSpec(t, dir)
+
+	mgr, err := history.Open(specPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := mgr.Commit(nil, "patch"); err != nil {
+		t.Fatal(err)
+	}
+	decisions := []byte(`{"spec_version":1,"decisions":{"d":{"selected":"a"}}}`)
+	if err := mgr.Commit(decisions, "submit"); err != nil {
+		t.Fatal(err)
+	}
+
+	entries, err := mgr.Log()
+	if err != nil {
+		t.Fatalf("Log: %v", err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("expected 2 entries, got %d", len(entries))
+	}
+
+	// Newest first
+	if !strings.Contains(entries[0].Subject, "submit") {
+		t.Errorf("expected newest entry subject to contain 'submit', got %q", entries[0].Subject)
+	}
+	if !strings.Contains(entries[1].Subject, "patch") {
+		t.Errorf("expected older entry subject to contain 'patch', got %q", entries[1].Subject)
+	}
+}
+
+func TestLogEntryFields(t *testing.T) {
+	requireGit(t)
+	dir := t.TempDir()
+	specPath := writeSpec(t, dir)
+
+	mgr, err := history.Open(specPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	decisions := []byte(`{"spec_version":1,"decisions":{"d":{"selected":"a"}}}`)
+	if err := mgr.Commit(decisions, "submit"); err != nil {
+		t.Fatal(err)
+	}
+
+	entries, err := mgr.Log()
+	if err != nil {
+		t.Fatalf("Log: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 entry, got %d", len(entries))
+	}
+
+	e := entries[0]
+	if e.Hash == "" {
+		t.Error("entry.Hash is empty")
+	}
+	if e.Timestamp.IsZero() {
+		t.Error("entry.Timestamp is zero")
+	}
+	if e.Subject == "" {
+		t.Error("entry.Subject is empty")
+	}
+	// Submit commit with decisions must have Decisions populated
+	if e.Decisions == "" {
+		t.Error("entry.Decisions is empty for submit commit with decisions")
+	}
+}
+
+// ── Show() tests ─────────────────────────────────────────────────────────────
+
+func TestShowReturnsSpecAtRef(t *testing.T) {
+	requireGit(t)
+	dir := t.TempDir()
+	specPath := writeSpec(t, dir)
+
+	mgr, err := history.Open(specPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.Commit(nil, "submit"); err != nil {
+		t.Fatal(err)
+	}
+
+	// Get HEAD hash
+	cmd := exec.Command("git", "-C", mgr.RepoPath(), "rev-parse", "--short", "HEAD")
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ref := strings.TrimSpace(string(out))
+
+	round, err := mgr.Show(ref)
+	if err != nil {
+		t.Fatalf("Show(%q): %v", ref, err)
+	}
+	if round == nil {
+		t.Fatal("Show returned nil round")
+	}
+	if len(round.Spec) == 0 {
+		t.Error("round.Spec is empty")
+	}
+	if !strings.Contains(string(round.Spec), "version:") {
+		t.Errorf("round.Spec doesn't look like a spec:\n%s", round.Spec)
+	}
+}
+
+func TestShowReturnsDecisionsWhenSidecar(t *testing.T) {
+	requireGit(t)
+	dir := t.TempDir()
+	specPath := writeSpec(t, dir)
+
+	mgr, err := history.Open(specPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	decisions := []byte(`{"spec_version":1,"decisions":{"d":{"selected":"a"}}}`)
+	if err := mgr.Commit(decisions, "submit"); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.Command("git", "-C", mgr.RepoPath(), "rev-parse", "--short", "HEAD")
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ref := strings.TrimSpace(string(out))
+
+	round, err := mgr.Show(ref)
+	if err != nil {
+		t.Fatalf("Show(%q): %v", ref, err)
+	}
+	if len(round.Decisions) == 0 {
+		t.Error("round.Decisions is empty for commit with sidecar")
+	}
+	if !strings.Contains(string(round.Decisions), `"selected"`) {
+		t.Errorf("round.Decisions doesn't contain expected content:\n%s", round.Decisions)
+	}
+}
+
+func TestShowNoDecisionsWhenNoSidecar(t *testing.T) {
+	requireGit(t)
+	dir := t.TempDir()
+	specPath := writeSpec(t, dir)
+
+	mgr, err := history.Open(specPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.Commit(nil, "patch"); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.Command("git", "-C", mgr.RepoPath(), "rev-parse", "--short", "HEAD")
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ref := strings.TrimSpace(string(out))
+
+	round, err := mgr.Show(ref)
+	if err != nil {
+		t.Fatalf("Show(%q): %v", ref, err)
+	}
+	if len(round.Decisions) != 0 {
+		t.Errorf("expected empty Decisions for commit without sidecar, got:\n%s", round.Decisions)
+	}
+}
+
+func TestShowInvalidRefReturnsError(t *testing.T) {
+	requireGit(t)
+	dir := t.TempDir()
+	specPath := writeSpec(t, dir)
+
+	mgr, err := history.Open(specPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.Commit(nil, "submit"); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = mgr.Show("deadbeef123")
+	if err == nil {
+		t.Fatal("expected error for nonexistent ref, got nil")
+	}
+}

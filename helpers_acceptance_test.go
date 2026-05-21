@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os/exec"
 	"strings"
 	"testing"
 )
@@ -26,3 +27,11 @@ func post(t *testing.T, url, jsonBody string, wantStatus int) {
 // errf builds an error using fmt.Errorf — convenience for goroutine
 // channels where t.Fatal isn't usable.
 func errf(format string, args ...any) error { return fmt.Errorf(format, args...) }
+
+// requireGit skips the test if git is not installed.
+func requireGit(t *testing.T) {
+	t.Helper()
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not installed")
+	}
+}

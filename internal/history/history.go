@@ -114,6 +114,149 @@ func (m *Manager) Commit(decisions []byte, msgPrefix string) error {
 	return nil
 }
 
+// ── Log and Show ─────────────────────────────────────────────────────────────
+
+// LogEntry describes a single commit in the history repository.
+type LogEntry struct {
+	Hash      string    // abbreviated git hash
+	Timestamp time.Time // commit author timestamp
+	Subject   string    // first line of commit message
+	Decisions string    // one-line summary of decisions (key→value), empty for non-submit commits
+}
+
+// Round holds the spec bytes and optional decisions bytes at a given ref.
+type Round struct {
+	Spec      []byte // contents of the .speckle file at that ref
+	Decisions []byte // contents of the .decisions.json sidecar, may be nil
+}
+
+// Log returns all commits in the history repository, newest first.
+// If no commits exist yet it returns an empty (non-nil) slice.
+func (m *Manager) Log() ([]LogEntry, error) {
+	// Use ASCII record separator (0x1e) between commits, and unit separator
+	// (0x1f) between fields within a commit: hash\x1ftimestamp\x1fsubject\x1fbody\x1e
+	const format = "%h\x1f%aI\x1f%s\x1f%b\x1e"
+	cmd := exec.Command("git", "-C", m.repoPath, "log", "--format="+format)
+	out, err := cmd.Output()
+	if err != nil {
+		// No commits yet: git log exits non-zero on empty repo.
+		return []LogEntry{}, nil
+	}
+	raw := string(out)
+	if strings.TrimSpace(raw) == "" {
+		return []LogEntry{}, nil
+	}
+
+	var entries []LogEntry
+	for _, rec := range strings.Split(raw, "\x1e") {
+		rec = strings.TrimSpace(rec)
+		if rec == "" {
+			continue
+		}
+		parts := strings.SplitN(rec, "\x1f", 4)
+		if len(parts) < 3 {
+			continue
+		}
+		hash := strings.TrimSpace(parts[0])
+		tsStr := strings.TrimSpace(parts[1])
+		subject := strings.TrimSpace(parts[2])
+		body := ""
+		if len(parts) == 4 {
+			body = strings.TrimSpace(parts[3])
+		}
+
+		if hash == "" {
+			continue
+		}
+
+		ts, _ := time.Parse(time.RFC3339, tsStr)
+
+		decisions := ""
+		if body != "" {
+			decisions = decisionsOneLiner(body)
+		}
+
+		entries = append(entries, LogEntry{
+			Hash:      hash,
+			Timestamp: ts,
+			Subject:   subject,
+			Decisions: decisions,
+		})
+	}
+	return entries, nil
+}
+
+// decisionsOneLiner extracts key→value pairs from a decisions JSON body,
+// returning a compact one-line summary. Returns "" if body isn't valid JSON.
+func decisionsOneLiner(body string) string {
+	// Find the first '{' to skip any preamble
+	start := strings.Index(body, "{")
+	if start < 0 {
+		return ""
+	}
+	var top map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(body[start:]), &top); err != nil {
+		return ""
+	}
+	decRaw, ok := top["decisions"]
+	if !ok {
+		return ""
+	}
+	var decisions map[string]json.RawMessage
+	if err := json.Unmarshal(decRaw, &decisions); err != nil {
+		return ""
+	}
+	var parts []string
+	for k, v := range decisions {
+		// Each value is typically {"selected":"x",...}
+		var dec struct {
+			Selected *string `json:"selected"`
+		}
+		if err := json.Unmarshal(v, &dec); err == nil && dec.Selected != nil {
+			parts = append(parts, k+"="+*dec.Selected)
+		} else {
+			parts = append(parts, k+"=?")
+		}
+	}
+	return strings.Join(parts, " ")
+}
+
+// Show returns the spec and optional decisions at a given git ref.
+// Returns an error if the ref does not exist.
+func (m *Manager) Show(ref string) (*Round, error) {
+	base := filepath.Base(m.specPath)
+
+	// Read spec at ref
+	specContent, err := gitShow(m.repoPath, ref+":"+base)
+	if err != nil {
+		return nil, fmt.Errorf("show spec at %s: %w", ref, err)
+	}
+
+	// Try to read decisions sidecar
+	ext := filepath.Ext(base)
+	stem := strings.TrimSuffix(base, ext)
+	sidecarName := stem + ".decisions.json"
+	var decisionsContent []byte
+	if dc, err := gitShow(m.repoPath, ref+":"+sidecarName); err == nil {
+		decisionsContent = dc
+	}
+
+	return &Round{
+		Spec:      specContent,
+		Decisions: decisionsContent,
+	}, nil
+}
+
+// gitShow runs git show <object> in repoPath and returns the contents.
+func gitShow(repoPath, object string) ([]byte, error) {
+	cmd := exec.Command("git", "-C", repoPath, "show", object)
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("git show %s: %w", object, err)
+	}
+	return out, nil
+}
+
 // ── internal helpers ──────────────────────────────────────────────────────
 
 type metaFile struct {
