@@ -1,0 +1,123 @@
+version: 1
+title: "speckle v0.1.0"
+notes: |
+  Speckle self-spec. Title tracks the next planned release version.
+  Convention: run /speckle before implementing each new feature or release.
+  Agent proposes spec sections; human approves via browser; then implement.
+dimensions:
+  - id: cli
+    label: CLI
+    color: "#4A90D9"
+  - id: format
+    label: Format
+    color: "#E67E22"
+  - id: history
+    label: History
+    color: "#27AE60"
+sections:
+  - id: versioning
+    heading: Version tracking in spec
+    dimension: format
+    body: |
+      The spec format has `version` (format schema version) but no field for
+      the product version the spec is planning. How should we track which
+      product release a spec covers?
+    decisions:
+      - id: product_version_field
+        prompt: How to embed product version in the spec
+        options:
+          - id: title_convention
+            label: "Title convention — embed version in the title (current approach)"
+          - id: new_field
+            label: "New field — add top-level product_version: \"0.1.0\" to the spec format"
+          - id: omit
+            label: "Omit — version tracked only in git tags, not the spec"
+            selected: true
+        comment: "omit — version tracked in git tags only"
+  - id: scaffolding
+    heading: "speckle new — scaffold command"
+    dimension: cli
+    body: |
+      New users must write specs from scratch. A scaffold command would reduce
+      friction and promote good spec structure.
+    decisions:
+      - id: new_command
+        prompt: "Add `speckle new <file.speckle>`"
+        options:
+          - id: yes
+            label: "Yes — generate a commented starter spec with example sections and decisions"
+            selected: true
+          - id: no
+            label: "No — examples in README are sufficient"
+        comment: "yes — add speckle new <file.speckle>"
+  - id: validation
+    heading: "speckle validate — CI pre-flight"
+    dimension: cli
+    body: |
+      Parse errors currently surface only when `speckle serve` runs.
+      A validate command enables CI pipelines to catch broken specs before serve.
+    decisions:
+      - id: validate_command
+        prompt: "Add `speckle validate <file.speckle>`"
+        options:
+          - id: yes_exit_code
+            label: "Yes — exit 0/1, print errors to stderr (shell-friendly)"
+          - id: yes_json
+            label: "Yes — output structured JSON errors (tooling-friendly)"
+            selected: true
+          - id: no
+            label: "No — serve validates on startup; separate command is redundant"
+        comment: "yes_json — output structured JSON errors for tooling"
+  - id: history_cli
+    heading: History navigation commands
+    dimension: history
+    body: |
+      The history repo holds full decision history but requires raw git commands
+      to inspect. CLI helpers make the audit trail accessible without git knowledge.
+    decisions:
+      - id: log_command
+        prompt: "Add `speckle log <file.speckle>`"
+        options:
+          - id: yes
+            label: "Yes — list past rounds: timestamp, message, decision summary"
+            selected: true
+          - id: no
+            label: "No — git log in .speckle-repo is sufficient"
+        comment: "yes — add speckle log"
+      - id: show_command
+        prompt: "Add `speckle show <file.speckle> <ref>`"
+        options:
+          - id: yes
+            label: "Yes — print spec + decisions for a given commit ref"
+            selected: true
+          - id: no
+            label: "No — git show in .speckle-repo is sufficient"
+        comment: "yes — add speckle show <ref>"
+  - id: self_spec_process
+    heading: Self-spec conventions
+    dimension: format
+    body: |
+      Conventions for how speckle uses itself to plan its own development.
+    decisions:
+      - id: spec_granularity
+        prompt: When to run a self-spec round
+        options:
+          - id: per_feature
+            label: "Per feature — spec each feature before implementing it"
+            selected: true
+          - id: per_release
+            label: "Per release — spec the full release before any implementation"
+          - id: hybrid
+            label: "Hybrid — release-level spec first, then per-feature rounds for detail"
+        comment: "per_feature — spec each feature before implementing"
+      - id: proposal_ownership
+        prompt: Who proposes spec changes
+        options:
+          - id: agent_proposes
+            label: "Agent proposes — agent drafts spec sections, human reviews via /speckle"
+          - id: human_proposes
+            label: "Human proposes — human edits .speckle directly, agent serves and awaits"
+          - id: both
+            label: "Both — either party may propose; /speckle is the gate regardless"
+            selected: true
+        comment: "both — either party may propose; /speckle is the gate"

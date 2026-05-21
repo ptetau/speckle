@@ -26,6 +26,7 @@ func NewRenderer() Renderer {
 		template.New("page").Funcs(template.FuncMap{
 			"renderMarkdown": renderMarkdown,
 			"selectedOption": selectedOption,
+			"findDimension":  findDimension,
 		}).ParseFS(embedded, "template.html"),
 	)
 	return &renderer{tpl: tpl}
@@ -48,6 +49,15 @@ func renderMarkdown(s string) template.HTML {
 		return template.HTML(template.HTMLEscapeString(s))
 	}
 	return template.HTML(buf.String())
+}
+
+func findDimension(id string, dims []spec.Dimension) *spec.Dimension {
+	for i := range dims {
+		if dims[i].ID == id {
+			return &dims[i]
+		}
+	}
+	return nil
 }
 
 func selectedOption(d spec.Decision) string {

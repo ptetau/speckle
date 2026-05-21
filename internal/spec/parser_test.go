@@ -158,6 +158,92 @@ sections:
 	}
 }
 
+func TestDimensionsParse(t *testing.T) {
+	src := `version: 1
+title: t
+dimensions:
+  - id: eng
+    label: Engineering
+    color: "#2c6fbb"
+  - id: design
+    label: Design
+    color: "#c25a78"
+sections:
+  - id: s
+    heading: h
+    dimension: eng
+    decisions:
+      - id: d
+        prompt: p
+        options:
+          - id: a
+            label: A
+`
+	s, err := parse(t, src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(s.Dimensions) != 2 {
+		t.Fatalf("want 2 dimensions, got %d", len(s.Dimensions))
+	}
+	if s.Dimensions[0].ID != "eng" || s.Dimensions[0].Color != "#2c6fbb" {
+		t.Fatalf("unexpected dimension: %+v", s.Dimensions[0])
+	}
+	if s.Sections[0].Dimension != "eng" {
+		t.Fatalf("section dimension not set: %+v", s.Sections[0])
+	}
+}
+
+func TestDimensionsRejectsDuplicateID(t *testing.T) {
+	src := `version: 1
+title: t
+dimensions:
+  - id: dup
+    label: A
+    color: "#111"
+  - id: dup
+    label: B
+    color: "#222"
+sections:
+  - id: s
+    heading: h
+    decisions:
+      - id: d
+        prompt: p
+        options:
+          - id: a
+            label: A
+`
+	_, err := parse(t, src)
+	if err == nil || !strings.Contains(err.Error(), "duplicate dimension") {
+		t.Fatalf("want duplicate-dimension error, got: %v", err)
+	}
+}
+
+func TestDimensionsRejectsUnknownReference(t *testing.T) {
+	src := `version: 1
+title: t
+dimensions:
+  - id: eng
+    label: Engineering
+    color: "#2c6fbb"
+sections:
+  - id: s
+    heading: h
+    dimension: unknown
+    decisions:
+      - id: d
+        prompt: p
+        options:
+          - id: a
+            label: A
+`
+	_, err := parse(t, src)
+	if err == nil || !strings.Contains(err.Error(), "unknown dimension") {
+		t.Fatalf("want unknown-dimension error, got: %v", err)
+	}
+}
+
 func TestExampleFileParses(t *testing.T) {
 	b, err := os.ReadFile("../../examples/example.speckle")
 	if err != nil {

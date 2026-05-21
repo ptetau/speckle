@@ -71,6 +71,58 @@ func TestRenderEmitsOptionsAndSandboxedPreviews(t *testing.T) {
 	}
 }
 
+func TestRenderDimensionsLegendAndBadge(t *testing.T) {
+	s := &spec.Spec{
+		Version: 1,
+		Title:   "T",
+		Dimensions: []spec.Dimension{
+			{ID: "eng", Label: "Engineering", Color: "#2c6fbb"},
+			{ID: "design", Label: "Graphic Design", Color: "#c25a78"},
+		},
+		Sections: []spec.Section{
+			{
+				ID: "s1", Heading: "Auth", Dimension: "eng",
+				Decisions: []spec.Decision{{
+					ID: "d", Prompt: "P",
+					Options: []spec.Option{{ID: "a", Label: "A"}},
+				}},
+			},
+			{
+				ID: "s2", Heading: "UI", Dimension: "design",
+				Decisions: []spec.Decision{{
+					ID: "d2", Prompt: "P",
+					Options: []spec.Option{{ID: "a", Label: "A"}},
+				}},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	if err := render.NewRenderer().Render(&buf, s); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+
+	// Legend must contain both dimension labels.
+	if !strings.Contains(out, "Engineering") {
+		t.Errorf("dimension legend missing 'Engineering': %s", excerpt(out))
+	}
+	if !strings.Contains(out, "Graphic Design") {
+		t.Errorf("dimension legend missing 'Graphic Design': %s", excerpt(out))
+	}
+	// Dimension colors must appear in rendered output.
+	if !strings.Contains(out, "#2c6fbb") {
+		t.Errorf("dimension color #2c6fbb not in output: %s", excerpt(out))
+	}
+	if !strings.Contains(out, "#c25a78") {
+		t.Errorf("dimension color #c25a78 not in output: %s", excerpt(out))
+	}
+	// Sections with a dimension must carry the color so CSS can use it.
+	if !strings.Contains(out, "s1") || !strings.Contains(out, "s2") {
+		t.Errorf("sections not rendered: %s", excerpt(out))
+	}
+}
+
 func excerpt(s string) string {
 	if len(s) > 600 {
 		return s[:600] + "…"

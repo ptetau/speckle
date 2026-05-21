@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -19,7 +20,11 @@ func TestMain(m *testing.M) {
 		fmt.Fprintln(os.Stderr, "TestMain: mktemp:", err)
 		os.Exit(2)
 	}
-	bin := filepath.Join(dir, "speckle")
+	name := "speckle"
+	if runtime.GOOS == "windows" {
+		name = "speckle.exe"
+	}
+	bin := filepath.Join(dir, name)
 	cmd := exec.Command("go", "build", "-o", bin, ".")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		fmt.Fprintln(os.Stderr, "TestMain: go build failed:\n", string(out))

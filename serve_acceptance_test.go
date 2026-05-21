@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"testing"
@@ -59,7 +60,11 @@ func startServer(t *testing.T, specYAML string) (baseURL, specPath string, clean
 			}
 			if json.Unmarshal(data, &l) == nil && l.URL != "" {
 				return l.URL, path, func() {
-					_ = cmd.Process.Signal(syscall.SIGINT)
+					if runtime.GOOS == "windows" {
+						_ = cmd.Process.Kill()
+					} else {
+						_ = cmd.Process.Signal(syscall.SIGINT)
+					}
 					_ = cmd.Wait()
 				}
 			}
@@ -200,6 +205,9 @@ func (e *httpErr) Error() string { return e.body }
 // it removes the lockfile so a subsequent `speckle await` doesn't
 // mistakenly try to talk to a dead process.
 func TestServeCleansUpLockfileOnShutdown(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("graceful SIGINT delivery to subprocess not supported on Windows")
+	}
 	url, specPath, stop := startServer(t, minSpec)
 	lockPath := specPath + ".lock"
 
@@ -225,6 +233,70 @@ func TestServeCleansUpLockfileOnShutdown(t *testing.T) {
 
 // TestServesExampleFileEndToEnd: the canonical sample plan we ship
 // renders without error and the rendered HTML includes its decisions.
+func TestServesSpecWithDimensions(t *testing.T) {
+	spec := `version: 1
+title: Dimensions test
+dimensions:
+  - id: eng
+    label: Engineering
+    color: "#2c6fbb"
+  - id: ux
+    label: UX
+    color: "#c25a78"
+sections:
+  - id: backend
+    heading: Backend choices
+    dimension: eng
+    decisions:
+      - id: db
+        prompt: Which database?
+        options:
+          - id: pg
+            label: Postgres
+          - id: mongo
+            label: MongoDB
+        default: pg
+        selected: null
+  - id: frontend
+    heading: UI direction
+    dimension: ux
+    decisions:
+      - id: layout
+        prompt: Layout?
+        options:
+          - id: card
+            label: Card
+          - id: list
+            label: List
+        default: card
+        selected: null
+notes: ""
+`
+	url, _, stop := startServer(t, spec)
+	defer stop()
+
+	r, err := http.Get(url + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Body.Close()
+	if r.StatusCode != 200 {
+		t.Fatalf("index: %d", r.StatusCode)
+	}
+	body, _ := io.ReadAll(r.Body)
+	html := string(body)
+
+	for _, want := range []string{
+		"Engineering", "UX",
+		"#2c6fbb", "#c25a78",
+		"Backend choices", "UI direction",
+	} {
+		if !strings.Contains(html, want) {
+			t.Errorf("rendered page missing %q", want)
+		}
+	}
+}
+
 func TestServesExampleFileEndToEnd(t *testing.T) {
 	example, err := os.ReadFile("examples/example.speckle")
 	if err != nil {

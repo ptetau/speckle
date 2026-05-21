@@ -1,2 +1,13 @@
 /speckle
+/speckle.exe
 *.speckle.lock
+# History repos are separate git repos — ignore the working-tree copies.
+# To share history, push .speckle-repo to a remote and configure the path
+# in .speckle-manifest.json.
+.speckle-repo/
+# Generated per-machine manifest (maps spec paths to history repo paths)
+.speckle-manifest.json
+# Clarification artifacts
+clarify-*.html
+# Examples session history
+examples/.speckle-history/

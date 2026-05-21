@@ -16,6 +16,17 @@ func (p *parser) Parse(b []byte) (*Spec, error) {
 	if s.Version != 1 {
 		return nil, fmt.Errorf("unsupported version %d (want 1)", s.Version)
 	}
+	seenDim := map[string]bool{}
+	for i, d := range s.Dimensions {
+		if d.ID == "" {
+			return nil, fmt.Errorf("dimension[%d]: missing id", i)
+		}
+		if seenDim[d.ID] {
+			return nil, fmt.Errorf("duplicate dimension id %q", d.ID)
+		}
+		seenDim[d.ID] = true
+	}
+
 	seenSec := map[string]bool{}
 	for i, sec := range s.Sections {
 		if sec.ID == "" {
@@ -25,6 +36,9 @@ func (p *parser) Parse(b []byte) (*Spec, error) {
 			return nil, fmt.Errorf("duplicate section id %q", sec.ID)
 		}
 		seenSec[sec.ID] = true
+		if sec.Dimension != "" && !seenDim[sec.Dimension] {
+			return nil, fmt.Errorf("section %q: unknown dimension id %q", sec.ID, sec.Dimension)
+		}
 		seenDec := map[string]bool{}
 		for j, d := range sec.Decisions {
 			if d.ID == "" {

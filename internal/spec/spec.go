@@ -12,16 +12,25 @@ func NewParser() Parser { return &parser{} }
 
 // Spec is the in-memory representation of a .speckle file.
 type Spec struct {
-	Version  int       `yaml:"version" json:"version"`
-	Title    string    `yaml:"title" json:"title"`
-	Sections []Section `yaml:"sections" json:"sections"`
-	Notes    string    `yaml:"notes,omitempty" json:"notes,omitempty"`
+	Version    int         `yaml:"version" json:"version"`
+	Title      string      `yaml:"title" json:"title"`
+	Dimensions []Dimension `yaml:"dimensions,omitempty" json:"dimensions,omitempty"`
+	Sections   []Section   `yaml:"sections" json:"sections"`
+	Notes      string      `yaml:"notes,omitempty" json:"notes,omitempty"`
+}
+
+// Dimension groups sections by concern and gives them a colour in the UI.
+type Dimension struct {
+	ID    string `yaml:"id" json:"id"`
+	Label string `yaml:"label" json:"label"`
+	Color string `yaml:"color" json:"color"`
 }
 
 type Section struct {
 	ID        string     `yaml:"id" json:"id"`
 	Heading   string     `yaml:"heading" json:"heading"`
 	Body      string     `yaml:"body,omitempty" json:"body,omitempty"`
+	Dimension string     `yaml:"dimension,omitempty" json:"dimension,omitempty"`
 	Decisions []Decision `yaml:"decisions,omitempty" json:"decisions,omitempty"`
 	Comment   string     `yaml:"comment,omitempty" json:"comment,omitempty"`
 }

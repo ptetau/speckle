@@ -18,6 +18,8 @@ func main() {
 		err = runAwait(os.Args[2:])
 	case "patch":
 		err = runPatch(os.Args[2:])
+	case "commit":
+		err = runCommit(os.Args[2:])
 	case "-h", "--help", "help":
 		usage()
 		return
@@ -38,6 +40,9 @@ Usage:
   speckle serve <file.speckle>   Render the plan as HTML and accept submissions.
   speckle await <file.speckle>   Block until the running server receives a submit;
                                   print the submission JSON on stdout.
-  speckle patch <file.speckle>   Apply a YAML overlay from stdin to the file.
+  speckle patch  <file.speckle>   Apply a YAML overlay from stdin to the file.
+  speckle commit <file.speckle>   Snapshot spec to git history repo.
+                                  --decisions FILE  include decisions JSON as sidecar
+                                  --message  MSG    commit message prefix (default: submit)
 `)
 }
