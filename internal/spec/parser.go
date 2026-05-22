@@ -70,5 +70,21 @@ func (p *parser) Parse(b []byte) (*Spec, error) {
 			}
 		}
 	}
+	// Derive Decision.Selected from Option.Selected when not already set.
+	for si := range s.Sections {
+		for di := range s.Sections[si].Decisions {
+			d := &s.Sections[si].Decisions[di]
+			if d.Selected != nil && *d.Selected != "" {
+				continue
+			}
+			for _, o := range d.Options {
+				if o.Selected {
+					id := o.ID
+					d.Selected = &id
+					break
+				}
+			}
+		}
+	}
 	return &s, nil
 }

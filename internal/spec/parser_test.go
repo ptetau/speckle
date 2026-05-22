@@ -344,6 +344,59 @@ inbox:
 	}
 }
 
+func TestParseDerivesDecisionSelectedFromOptionSelected(t *testing.T) {
+	src := `version: 1
+title: t
+sections:
+  - id: s
+    heading: h
+    decisions:
+      - id: d
+        prompt: p
+        options:
+          - id: a
+            label: A
+          - id: b
+            label: B
+            selected: true
+`
+	s, err := parse(t, src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := s.Sections[0].Decisions[0]
+	if d.Selected == nil || *d.Selected != "b" {
+		t.Errorf("want Selected=b, got %v", d.Selected)
+	}
+}
+
+func TestParseDecisionSelectedNotOverridden(t *testing.T) {
+	src := `version: 1
+title: t
+sections:
+  - id: s
+    heading: h
+    decisions:
+      - id: d
+        prompt: p
+        selected: a
+        options:
+          - id: a
+            label: A
+          - id: b
+            label: B
+            selected: true
+`
+	s, err := parse(t, src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := s.Sections[0].Decisions[0]
+	if d.Selected == nil || *d.Selected != "a" {
+		t.Errorf("want Selected=a (explicit wins), got %v", d.Selected)
+	}
+}
+
 func TestParseProsConsOmitted(t *testing.T) {
 	// A spec without pros/cons/recommended must parse cleanly.
 	s, err := parse(t, validSpec)

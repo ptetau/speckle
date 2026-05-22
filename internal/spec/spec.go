@@ -51,6 +51,7 @@ type Decision struct {
 type Option struct {
 	ID          string   `yaml:"id" json:"id"`
 	Label       string   `yaml:"label" json:"label"`
+	Selected    bool     `yaml:"selected,omitempty" json:"selected,omitempty"`
 	Description string   `yaml:"description,omitempty" json:"description,omitempty"`
 	Preview     *Preview `yaml:"preview,omitempty" json:"preview,omitempty"`
 	Pros        []string `yaml:"pros,omitempty" json:"pros,omitempty"`
