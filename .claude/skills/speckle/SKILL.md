@@ -17,7 +17,7 @@ description: >
 ```
 
 - Omit the path to auto-detect a `.speckle` file in the working tree.
-- Pass `--update` to force `go install github.com/ptetau/speckle@latest`.
+- Pass `--update` to force reinstall even if the binary exists.
 
 ---
 
@@ -34,14 +34,33 @@ Get-Command speckle -ErrorAction SilentlyContinue
 command -v speckle
 ```
 
-If not found, or if `--update` was passed, install:
+If not found **or** `--update` was passed, install:
 
 ```bash
-go install github.com/ptetau/speckle@latest
+go install github.com/ptetau/speckle@v0.2.0
 ```
 
-If the install fails (no Go, no network), stop and tell the user:
+After install, verify `speckle commit` exists (older cached `@latest` may be pre-v0.2.0):
+
+```bash
+speckle --help 2>&1 | grep -q commit || go install github.com/ptetau/speckle@v0.2.0
+```
+
+If install fails (no Go, no network), stop:
 > "speckle not found and `go install` failed. Install Go from https://go.dev/dl or add speckle to PATH."
+
+### Full CLI reference (v0.2.0)
+
+| Command | Purpose |
+|---|---|
+| `speckle serve <file>`   | Render spec as HTML, accept submissions |
+| `speckle await <file>`   | Block until submit; print decisions JSON to stdout |
+| `speckle patch <file>`   | Apply YAML overlay from stdin |
+| `speckle commit <file>`  | Snapshot spec+decisions to git history repo |
+| `speckle new <file>`     | Scaffold a starter spec |
+| `speckle validate <file>`| Parse and emit JSON errors; exit 0/1 |
+| `speckle log <file>`     | List past decision rounds |
+| `speckle show <file> <ref>` | Print spec+decisions at a git ref |
 
 ---
 
@@ -51,68 +70,90 @@ If a path was given as an argument, use it directly.
 
 Otherwise, glob for `**/*.speckle` in the current working directory (excluding `.speckle-repo/`):
 
-- **Exactly one match** → use it; tell the agent which file was chosen.
-- **Multiple matches** → list them and ask the agent which to use before proceeding.
+- **Exactly one match** → use it; tell the user which file was chosen.
+- **Multiple matches** → list them and ask which to use before proceeding.
 - **No match** → stop with:
-  > "No .speckle file found. Write one first (see README for format), then run /speckle again."
+  > "No .speckle file found. Run `speckle new <file.speckle>` to scaffold one, then run /speckle again."
 
 ---
 
 ## Step 3 — Start server (if not already running)
 
-Check whether a lockfile already exists at `<spec-path>.lock`.
+Check whether a lockfile exists at `<spec-path>.lock`.
 
-**If lockfile exists**: read the URL from it. Reuse the existing server.
-
-**If no lockfile**: start the server in the background:
+**If lockfile exists**: read the URL from it. Then verify the server is alive:
 
 ```bash
-speckle serve <spec-path> &
+# Unix
+curl -sf <url> > /dev/null && echo alive || echo dead
+```
+```powershell
+# Windows
+try { Invoke-WebRequest -Uri <url> -TimeoutSec 2 -UseBasicParsing | Out-Null; "alive" } catch { "dead" }
 ```
 
-Wait up to 3 seconds, polling every 100 ms, for the lockfile to appear. Read the URL from it:
+- **alive** → reuse the existing server.
+- **dead** → delete the stale lockfile, start a fresh server (same as no-lockfile path below).
+
+**If no lockfile** (or stale one deleted): start server in background:
+
+```bash
+# Unix
+speckle serve <spec-path> &
+
+# Windows PowerShell
+Start-Process -NoNewWindow speckle -ArgumentList "serve","<spec-path>"
+```
+
+Wait up to 3 seconds (poll every 100 ms) for the lockfile to appear. Read the URL:
 
 ```json
 { "url": "http://127.0.0.1:XXXXX", "port": XXXXX, "pid": XXXXX }
 ```
 
-If the lockfile doesn't appear within 3 seconds, report the server's stderr and stop.
+If lockfile doesn't appear in 3 seconds, report stderr and stop.
 
-Tell the agent (and user):
+Tell the user:
 > "Speckle serving at **\<URL\>** — open in browser, review the options, and click Submit."
 
 ---
 
 ## Step 4 — Await submission
 
-Run `speckle await <spec-path>`. This blocks with no timeout until the human submits.
+Run `speckle await <spec-path>`. Blocks until the human submits. Capture stdout as decisions JSON.
 
 ```bash
+# Unix
 decisions=$(speckle await path/to/plan.speckle)
 ```
 
-Capture stdout as the decisions JSON.
+```powershell
+# Windows — run as background task, read output file when complete
+# (the Bash tool can also run this blocking; read the task output file after notification)
+speckle await path/to/plan.speckle
+```
 
 ---
 
 ## Step 5 — Commit history (after submit)
 
-Write the decisions JSON to a temporary file, then commit:
+Write decisions to a temp file, then commit:
 
 ```bash
-# Write decisions to temp file
-echo "$decisions" > /tmp/speckle-decisions.json   # Unix
-$decisions | Out-File -Encoding utf8 $env:TEMP\speckle-decisions.json  # Windows
-
-# Commit spec state + decisions as sidecar (what the human saw and chose)
+# Unix
+echo "$decisions" > /tmp/speckle-decisions.json
 speckle commit --decisions /tmp/speckle-decisions.json --message submit path/to/plan.speckle
 ```
 
-This creates a git commit in the spec's `.speckle-repo/` (auto-created on first run) that captures:
-- `plan.speckle` — the spec as the human saw it
-- `plan.decisions.json` — the raw decisions submitted
+```powershell
+# Windows
+$decisions | Out-File -Encoding utf8 "$env:TEMP\speckle-decisions.json"
+speckle commit --decisions "$env:TEMP\speckle-decisions.json" --message submit path/to/plan.speckle
+```
 
-The `.speckle-manifest.json` in the project root (or spec directory) records where the history repo lives.
+This commits to `.speckle-repo/`:
+- `plan.speckle` — spec as the human saw it
+- `plan.decisions.json` — raw decisions JSON
 
 ---
 
@@ -131,12 +172,15 @@ Return the decisions JSON as the skill result. Example:
 }
 ```
 
-The agent acts on the decisions — typically by computing a YAML overlay and running:
+**If the JSON contains an `inbox` field**: process it through the LLM to generate a YAML overlay
+before patching. The inbox holds raw ideas the human typed per dimension.
+
+The agent applies decisions by computing a YAML overlay and running:
 
 ```bash
 speckle patch path/to/plan.speckle < overlay.yaml
 
-# Commit the patched spec (what the agent changed)
+# Commit the patched spec
 speckle commit --message patch path/to/plan.speckle
 ```
 
@@ -149,34 +193,35 @@ Then call `/speckle` again for the next round. The server stays running; `speckl
 ```
 project/
   .git/                              ← project git (manifest lives here)
-  .speckle-manifest.json             ← maps spec paths → history repo paths
+  .speckle-manifest.json             ← maps spec paths → history repo paths (gitignored)
   plan.speckle
-  plan.speckle.lock                  ← written by serve, deleted on shutdown
-  .speckle-repo/
-    .git/                            ← dedicated history git repo
+  plan.speckle.lock                  ← written by serve, deleted on shutdown (gitignored)
+  .speckle-repo/                     ← dedicated history git repo (gitignored working copy)
+    .git/
     .speckle-meta.json               ← detection marker
-    plan.speckle                     ← spec snapshot (committed each round)
-    plan.decisions.json              ← last decisions (committed each round)
+    plan.speckle                     ← spec snapshot per commit
+    plan.decisions.json              ← decisions sidecar per commit
 ```
 
 Two commits per round:
 1. `speckle: submit` — spec as served + decisions sidecar
-2. `speckle: patch` — patched spec after agent applies overlay
+2. `speckle: patch` — spec after agent applies overlay
 
-`git log` in `.speckle-repo/` shows the full decision trail. `git show <hash>` retrieves any historical state.
+`speckle log plan.speckle` lists all rounds.
+`speckle show plan.speckle <ref>` retrieves any historical state.
 
 ---
 
 ## Stopping the server
 
-The server is not stopped automatically — it stays up for subsequent rounds. To shut it down explicitly:
-
 ```bash
 # Unix
 kill $(python3 -c "import sys,json; print(json.load(open('plan.speckle.lock'))['pid'])")
+```
 
-# Windows PowerShell
+```powershell
+# Windows
 $specklePid = (Get-Content plan.speckle.lock | ConvertFrom-Json).pid
 Stop-Process -Id $specklePid -Force
-Remove-Item plan.speckle.lock   # Windows: manual cleanup (no graceful SIGINT)
+Remove-Item plan.speckle.lock   # manual cleanup — no graceful SIGINT on Windows
 ```
