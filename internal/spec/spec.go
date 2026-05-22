@@ -49,6 +49,9 @@ type Option struct {
 	Label       string   `yaml:"label" json:"label"`
 	Description string   `yaml:"description,omitempty" json:"description,omitempty"`
 	Preview     *Preview `yaml:"preview,omitempty" json:"preview,omitempty"`
+	Pros        []string `yaml:"pros,omitempty" json:"pros,omitempty"`
+	Cons        []string `yaml:"cons,omitempty" json:"cons,omitempty"`
+	Recommended bool     `yaml:"recommended,omitempty" json:"recommended,omitempty"`
 }
 
 type Preview struct {

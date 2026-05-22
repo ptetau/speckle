@@ -253,3 +253,79 @@ func TestExampleFileParses(t *testing.T) {
 		t.Fatalf("example.speckle does not parse: %v", err)
 	}
 }
+
+func TestParseProsConsRecommended(t *testing.T) {
+	src := `version: 1
+title: t
+sections:
+  - id: s
+    heading: h
+    decisions:
+      - id: d
+        prompt: p
+        options:
+          - id: a
+            label: A
+            pros:
+              - Fast startup
+              - Small footprint
+            cons:
+              - Less mature
+            recommended: true
+          - id: b
+            label: B
+            pros:
+              - Battle-tested
+            cons:
+              - Heavyweight
+              - Slow cold start
+`
+	s, err := parse(t, src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opts := s.Sections[0].Decisions[0].Options
+	if len(opts) != 2 {
+		t.Fatalf("want 2 options, got %d", len(opts))
+	}
+
+	a := opts[0]
+	if !a.Recommended {
+		t.Errorf("option a: want Recommended=true")
+	}
+	if len(a.Pros) != 2 || a.Pros[0] != "Fast startup" || a.Pros[1] != "Small footprint" {
+		t.Errorf("option a: unexpected pros: %v", a.Pros)
+	}
+	if len(a.Cons) != 1 || a.Cons[0] != "Less mature" {
+		t.Errorf("option a: unexpected cons: %v", a.Cons)
+	}
+
+	b := opts[1]
+	if b.Recommended {
+		t.Errorf("option b: want Recommended=false")
+	}
+	if len(b.Pros) != 1 || b.Pros[0] != "Battle-tested" {
+		t.Errorf("option b: unexpected pros: %v", b.Pros)
+	}
+	if len(b.Cons) != 2 || b.Cons[0] != "Heavyweight" || b.Cons[1] != "Slow cold start" {
+		t.Errorf("option b: unexpected cons: %v", b.Cons)
+	}
+}
+
+func TestParseProsConsOmitted(t *testing.T) {
+	// A spec without pros/cons/recommended must parse cleanly.
+	s, err := parse(t, validSpec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opt := s.Sections[0].Decisions[0].Options[0]
+	if opt.Recommended {
+		t.Errorf("want Recommended=false when omitted")
+	}
+	if len(opt.Pros) != 0 {
+		t.Errorf("want empty Pros when omitted, got %v", opt.Pros)
+	}
+	if len(opt.Cons) != 0 {
+		t.Errorf("want empty Cons when omitted, got %v", opt.Cons)
+	}
+}

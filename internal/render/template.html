@@ -169,6 +169,63 @@
       margin: .35rem 0 0;
     }
 
+    .option-recommended {
+      display: inline-block;
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: .12rem .5rem;
+      border-radius: 999px;
+      background: #d4edda;
+      color: #1a6630;
+      border: 1px solid #a3d9af;
+      margin-left: .5rem;
+      vertical-align: middle;
+    }
+    @media (prefers-color-scheme: dark) {
+      .option-recommended {
+        background: #1a3321;
+        color: #6fcf8a;
+        border-color: #2d5c3a;
+      }
+    }
+
+    .option-pros,
+    .option-cons {
+      list-style: none;
+      padding: 0;
+      margin: .45rem 0 0;
+      font-size: .88rem;
+      line-height: 1.5;
+    }
+    .option-pros li,
+    .option-cons li {
+      padding: .1rem 0;
+    }
+    .option-pros li::before {
+      content: "+ ";
+      font-weight: 700;
+      color: #1a6630;
+    }
+    @media (prefers-color-scheme: dark) {
+      .option-pros li::before { color: #6fcf8a; }
+    }
+    .option-cons li::before {
+      content: "– ";
+      font-weight: 700;
+      color: #7b4f00;
+    }
+    @media (prefers-color-scheme: dark) {
+      .option-cons li::before { color: #d4a84b; }
+    }
+    .option-pros li { color: #1a6630; }
+    .option-cons li { color: #7b4f00; }
+    @media (prefers-color-scheme: dark) {
+      .option-pros li { color: #6fcf8a; }
+      .option-cons li { color: #d4a84b; }
+    }
+
     .preview { margin-top: .65rem; }
     .preview pre {
       background: var(--bg-soft);
@@ -353,7 +410,9 @@
         {{ range .Options }}
         <label class="option {{ if eq .ID $sel }}selected{{ end }}" data-option-id="{{ .ID }}">
           <input type="radio" name="decision-{{ $decID }}" value="{{ .ID }}"{{ if eq .ID $sel }} checked{{ end }}>
-          <span class="option-label">{{ .Label }}</span>
+          <span class="option-label">{{ .Label }}{{ if .Recommended }}<span class="option-recommended">&#9733; Recommended</span>{{ end }}</span>
+          {{ if .Pros }}<ul class="option-pros">{{ range .Pros }}<li>{{ . }}</li>{{ end }}</ul>{{ end }}
+          {{ if .Cons }}<ul class="option-cons">{{ range .Cons }}<li>{{ . }}</li>{{ end }}</ul>{{ end }}
           {{ if .Description }}<div class="option-description">{{ .Description }}</div>{{ end }}
           {{ if .Preview }}
           <div class="preview">

@@ -35,3 +35,11 @@ func requireGit(t *testing.T) {
 		t.Skip("git not installed")
 	}
 }
+
+// excerpt returns the first 600 bytes of s, for use in test failure messages.
+func excerpt(s string) string {
+	if len(s) > 600 {
+		return s[:600] + "…"
+	}
+	return s
+}

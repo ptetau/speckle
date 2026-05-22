@@ -123,6 +123,105 @@ func TestRenderDimensionsLegendAndBadge(t *testing.T) {
 	}
 }
 
+func TestRenderProsConsRecommended(t *testing.T) {
+	s := &spec.Spec{
+		Version: 1,
+		Title:   "T",
+		Sections: []spec.Section{{
+			ID: "s", Heading: "H",
+			Decisions: []spec.Decision{{
+				ID: "d", Prompt: "P",
+				Options: []spec.Option{
+					{
+						ID:          "a",
+						Label:       "Option A",
+						Pros:        []string{"Fast startup", "Small footprint"},
+						Cons:        []string{"Less mature"},
+						Recommended: true,
+					},
+					{
+						ID:    "b",
+						Label: "Option B",
+						Pros:  []string{"Battle-tested"},
+						Cons:  []string{"Heavyweight", "Slow cold start"},
+					},
+				},
+			}},
+		}},
+	}
+
+	var buf bytes.Buffer
+	if err := render.NewRenderer().Render(&buf, s); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+
+	// Recommended badge for option a.
+	if !strings.Contains(out, "Recommended") {
+		t.Errorf("missing Recommended badge: %s", excerpt(out))
+	}
+
+	// Pros for option a.
+	if !strings.Contains(out, "Fast startup") {
+		t.Errorf("missing pro 'Fast startup': %s", excerpt(out))
+	}
+	if !strings.Contains(out, "Small footprint") {
+		t.Errorf("missing pro 'Small footprint': %s", excerpt(out))
+	}
+
+	// Cons for option a.
+	if !strings.Contains(out, "Less mature") {
+		t.Errorf("missing con 'Less mature': %s", excerpt(out))
+	}
+
+	// Pros for option b.
+	if !strings.Contains(out, "Battle-tested") {
+		t.Errorf("missing pro 'Battle-tested': %s", excerpt(out))
+	}
+
+	// Cons for option b.
+	if !strings.Contains(out, "Heavyweight") {
+		t.Errorf("missing con 'Heavyweight': %s", excerpt(out))
+	}
+	if !strings.Contains(out, "Slow cold start") {
+		t.Errorf("missing con 'Slow cold start': %s", excerpt(out))
+	}
+}
+
+func TestRenderNoProsConsNoExtraMarkup(t *testing.T) {
+	// An option with no pros/cons/recommended must not produce the
+	// badge or list elements at all — existing layout must be intact.
+	s := &spec.Spec{
+		Version: 1,
+		Title:   "T",
+		Sections: []spec.Section{{
+			ID: "s", Heading: "H",
+			Decisions: []spec.Decision{{
+				ID: "d", Prompt: "P",
+				Options: []spec.Option{
+					{ID: "a", Label: "Plain"},
+				},
+			}},
+		}},
+	}
+
+	var buf bytes.Buffer
+	if err := render.NewRenderer().Render(&buf, s); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+
+	if strings.Contains(out, "Recommended") {
+		t.Errorf("unexpected Recommended badge when not set: %s", excerpt(out))
+	}
+	if strings.Contains(out, `class="option-pros"`) {
+		t.Errorf("unexpected pros list when not set: %s", excerpt(out))
+	}
+	if strings.Contains(out, `class="option-cons"`) {
+		t.Errorf("unexpected cons list when not set: %s", excerpt(out))
+	}
+}
+
 func excerpt(s string) string {
 	if len(s) > 600 {
 		return s[:600] + "…"
