@@ -32,6 +32,8 @@ func main() {
 		err = runInbox(os.Args[2:])
 	case "expand":
 		err = runExpand(os.Args[2:])
+	case "process-inbox":
+		err = runProcessInbox(os.Args[2:])
 	case "-h", "--help", "help":
 		usage()
 		return
@@ -60,5 +62,6 @@ Usage:
   speckle validate <file.speckle>        Parse spec and print {"valid":true} or {"valid":false,...}.
   speckle log      <file.speckle>        List past decision rounds (newest first).
   speckle show     <file.speckle> <ref>  Print spec and decisions at a given git ref.
+  speckle process-inbox <file.speckle>  Print inbox content as JSON for agent LLM processing.
 `)
 }
