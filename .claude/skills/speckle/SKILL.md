@@ -37,13 +37,13 @@ command -v speckle
 If not found **or** `--update` was passed, install:
 
 ```bash
-go install github.com/ptetau/speckle@v0.2.0
+go install github.com/ptetau/speckle@v0.4.1
 ```
 
-After install, verify `speckle commit` exists (older cached `@latest` may be pre-v0.2.0):
+After install, verify `speckle process-inbox` exists (older cached binary may be pre-v0.4.1):
 
 ```bash
-speckle --help 2>&1 | grep -q commit || go install github.com/ptetau/speckle@v0.2.0
+speckle --help 2>&1 | grep -q process-inbox || go install github.com/ptetau/speckle@v0.4.1
 ```
 
 If install fails (no Go, no network), stop:
@@ -53,14 +53,17 @@ If install fails (no Go, no network), stop:
 
 | Command | Purpose |
 |---|---|
-| `speckle serve <file>`   | Render spec as HTML, accept submissions |
-| `speckle await <file>`   | Block until submit; print decisions JSON to stdout |
-| `speckle patch <file>`   | Apply YAML overlay from stdin |
-| `speckle commit <file>`  | Snapshot spec+decisions to git history repo |
-| `speckle new <file>`     | Scaffold a starter spec |
-| `speckle validate <file>`| Parse and emit JSON errors; exit 0/1 |
-| `speckle log <file>`     | List past decision rounds |
-| `speckle show <file> <ref>` | Print spec+decisions at a git ref |
+| `speckle serve <file>`          | Render spec as HTML, accept submissions |
+| `speckle await <file>`          | Block until submit; print decisions JSON to stdout |
+| `speckle patch <file>`          | Apply YAML overlay from stdin; auto-assigns codes, clears decided comments |
+| `speckle commit <file>`         | Snapshot spec+decisions to git history repo |
+| `speckle new <file>`            | Scaffold a starter spec |
+| `speckle validate <file>`       | Parse and emit JSON errors; exit 0/1 |
+| `speckle log <file>`            | List past decision rounds |
+| `speckle show <file> <ref>`     | Print spec+decisions at a git ref |
+| `speckle inbox <file> <dim-id>` | Append stdin text to spec's inbox for that dimension |
+| `speckle process-inbox <file>`  | Print `{spec_version, title, inbox}` JSON for agent LLM processing |
+| `speckle expand <decision-id>`  | Print YAML overlay stub with 3 new option placeholders; `--mode hybrid\|adjacent\|experimental\|mix` |
 
 ---
 
