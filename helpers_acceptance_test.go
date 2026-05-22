@@ -1,12 +1,19 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 )
 
 // post sends a JSON body to url and fails the test if the response
@@ -42,4 +49,51 @@ func excerpt(s string) string {
 		return s[:600] + "…"
 	}
 	return s
+}
+
+// startServerWithContent launches the speckle binary with an existing spec file
+// when specPath is non-empty and specYAML is empty, or writes specYAML to a
+// temp file when specPath is empty. Returns the base URL, spec path, and a
+// cleanup function.
+func startServerWithContent(t *testing.T, specPath, specYAML string) (baseURL, path string, cleanup func()) {
+	t.Helper()
+	if specPath == "" {
+		dir := t.TempDir()
+		specPath = filepath.Join(dir, "plan.speckle")
+		if err := os.WriteFile(specPath, []byte(specYAML), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cmd := exec.Command(testBinary, "serve", "--addr=127.0.0.1:0", specPath)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	cmd.Stdout = io.Discard
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start server: %v", err)
+	}
+
+	lockPath := specPath + ".lock"
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if data, err := os.ReadFile(lockPath); err == nil {
+			var l struct {
+				URL string `json:"url"`
+			}
+			if json.Unmarshal(data, &l) == nil && l.URL != "" {
+				return l.URL, specPath, func() {
+					if runtime.GOOS == "windows" {
+						_ = cmd.Process.Kill()
+					} else {
+						_ = cmd.Process.Signal(syscall.SIGINT)
+					}
+					_ = cmd.Wait()
+				}
+			}
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	_ = cmd.Process.Kill()
+	_ = cmd.Wait()
+	t.Fatalf("server didn't write lockfile within 2s\nstderr: %s", stderr.String())
+	return "", "", nil
 }

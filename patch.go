@@ -9,6 +9,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/ptetau/speckle/internal/codes"
+	"github.com/ptetau/speckle/internal/lifecycle"
 	"github.com/ptetau/speckle/internal/overlay"
 	"github.com/ptetau/speckle/internal/spec"
 )
@@ -54,8 +56,37 @@ func runPatch(args []string) error {
 		return err
 	}
 	out := buf.Bytes()
-	if _, err := spec.NewParser().Parse(out); err != nil {
+	parsed, err := spec.NewParser().Parse(out)
+	if err != nil {
 		return fmt.Errorf("merged result is not a valid spec: %w", err)
 	}
+
+	// Assign DIM-NNN codes to any entity that doesn't have one yet.
+	codes.Assign(parsed)
+
+	// Clear comments on decided decisions.
+	lifecycle.ClearDecidedComments(parsed)
+
+	// Re-encode the spec with codes and cleared comments applied.
+	out, err = marshalSpec(parsed)
+	if err != nil {
+		return fmt.Errorf("encode patched spec: %w", err)
+	}
+
 	return os.WriteFile(path, out, 0o644)
 }
+
+// marshalSpec encodes a *spec.Spec back to YAML bytes.
+func marshalSpec(s *spec.Spec) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+	if err := enc.Encode(s); err != nil {
+		return nil, err
+	}
+	if err := enc.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+

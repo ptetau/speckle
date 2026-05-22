@@ -75,6 +75,9 @@ func (s *server) Handler() http.Handler {
 	mux.HandleFunc("/submit", s.handleSubmit)
 	mux.HandleFunc("/await", s.handleAwait)
 	mux.HandleFunc("/events", s.handleEvents)
+	mux.HandleFunc("/history/", s.handleHistory)
+	mux.HandleFunc("/history", s.handleHistory)
+	mux.HandleFunc("/expand", s.handleExpand)
 	return mux
 }
 

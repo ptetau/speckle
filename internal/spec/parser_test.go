@@ -312,6 +312,38 @@ sections:
 	}
 }
 
+func TestParseInboxField(t *testing.T) {
+	src := `version: 1
+title: Inbox test
+sections:
+  - id: s
+    heading: h
+    decisions:
+      - id: d
+        prompt: p
+        options:
+          - id: a
+            label: A
+        selected: null
+inbox:
+  cli: "some idea"
+  api: "another idea"
+`
+	s, err := parse(t, src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Inbox == nil {
+		t.Fatal("inbox should not be nil")
+	}
+	if s.Inbox["cli"] != "some idea" {
+		t.Errorf("inbox[cli]: got %q, want %q", s.Inbox["cli"], "some idea")
+	}
+	if s.Inbox["api"] != "another idea" {
+		t.Errorf("inbox[api]: got %q, want %q", s.Inbox["api"], "another idea")
+	}
+}
+
 func TestParseProsConsOmitted(t *testing.T) {
 	// A spec without pros/cons/recommended must parse cleanly.
 	s, err := parse(t, validSpec)

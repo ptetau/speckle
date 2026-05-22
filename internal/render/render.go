@@ -24,9 +24,12 @@ type Renderer interface {
 func NewRenderer() Renderer {
 	tpl := template.Must(
 		template.New("page").Funcs(template.FuncMap{
-			"renderMarkdown": renderMarkdown,
-			"selectedOption": selectedOption,
-			"findDimension":  findDimension,
+			"renderMarkdown":   renderMarkdown,
+			"selectedOption":   selectedOption,
+			"findDimension":    findDimension,
+			"isDecided":        isDecided,
+			"isOpen":           isOpen,
+			"hasOpenDecisions": hasOpenDecisions,
 		}).ParseFS(embedded, "template.html"),
 	)
 	return &renderer{tpl: tpl}
@@ -65,4 +68,35 @@ func selectedOption(d spec.Decision) string {
 		return *d.Selected
 	}
 	return d.Default
+}
+
+// isOpen returns true if the section has at least one decision without a Selected value.
+func isOpen(sec spec.Section) bool {
+	return !isDecided(sec)
+}
+
+// isDecided returns true if all decisions in the section have a non-empty Selected value.
+func isDecided(sec spec.Section) bool {
+	if len(sec.Decisions) == 0 {
+		return false
+	}
+	for _, d := range sec.Decisions {
+		if d.Selected == nil || *d.Selected == "" {
+			return false
+		}
+	}
+	return true
+}
+
+// hasOpenDecisions returns true if any section in the spec has at least one
+// decision without a Selected value.
+func hasOpenDecisions(sections []spec.Section) bool {
+	for _, sec := range sections {
+		for _, d := range sec.Decisions {
+			if d.Selected == nil || *d.Selected == "" {
+				return true
+			}
+		}
+	}
+	return false
 }

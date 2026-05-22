@@ -77,7 +77,9 @@ func Open(specPath string) (*Manager, error) {
 // decisions may be nil; when provided they are written as a sidecar file
 // named <spec-stem>.decisions.json and embedded in the commit message body.
 // msgPrefix is used as the first-line suffix: "speckle: <msgPrefix>".
-func (m *Manager) Commit(decisions []byte, msgPrefix string) error {
+// digest, when non-empty, is stored as the first line of the commit message
+// body: "digest: <value>".
+func (m *Manager) Commit(decisions []byte, msgPrefix, digest string) error {
 	base := filepath.Base(m.specPath)
 
 	// Copy spec into repo.
@@ -104,8 +106,15 @@ func (m *Manager) Commit(decisions []byte, msgPrefix string) error {
 	}
 
 	msg := "speckle: " + msgPrefix
+	var bodyParts []string
+	if digest != "" {
+		bodyParts = append(bodyParts, "digest: "+digest)
+	}
 	if len(decisions) > 0 {
-		msg += "\n\n" + string(decisions)
+		bodyParts = append(bodyParts, string(decisions))
+	}
+	if len(bodyParts) > 0 {
+		msg += "\n\n" + strings.Join(bodyParts, "\n")
 	}
 
 	if err := runGit(m.repoPath, "commit", "--allow-empty", "-m", msg); err != nil {
@@ -122,6 +131,7 @@ type LogEntry struct {
 	Timestamp time.Time // commit author timestamp
 	Subject   string    // first line of commit message
 	Decisions string    // one-line summary of decisions (key→value), empty for non-submit commits
+	Digest    string    // content digest embedded in commit body, empty when absent
 }
 
 // Round holds the spec bytes and optional decisions bytes at a given ref.
@@ -172,8 +182,10 @@ func (m *Manager) Log() ([]LogEntry, error) {
 		ts, _ := time.Parse(time.RFC3339, tsStr)
 
 		decisions := ""
+		digest := ""
 		if body != "" {
 			decisions = decisionsOneLiner(body)
+			digest = digestFromBody(body)
 		}
 
 		entries = append(entries, LogEntry{
@@ -181,9 +193,22 @@ func (m *Manager) Log() ([]LogEntry, error) {
 			Timestamp: ts,
 			Subject:   subject,
 			Decisions: decisions,
+			Digest:    digest,
 		})
 	}
 	return entries, nil
+}
+
+// digestFromBody extracts the "digest: <value>" line from the commit body,
+// or returns "" if not present.
+func digestFromBody(body string) string {
+	for _, line := range strings.Split(body, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "digest: ") {
+			return strings.TrimPrefix(line, "digest: ")
+		}
+	}
+	return ""
 }
 
 // decisionsOneLiner extracts key→value pairs from a decisions JSON body,

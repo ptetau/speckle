@@ -14,6 +14,9 @@ dimensions:
   - id: history
     label: History
     color: "#27AE60"
+  - id: llm
+    label: LLM
+    color: "#9B59B6"
 sections:
   - id: versioning
     heading: Version tracking in spec
@@ -28,12 +31,13 @@ sections:
         options:
           - id: title_convention
             label: "Title convention — embed version in the title (current approach)"
+            selected: true
           - id: new_field
             label: "New field — add top-level product_version: \"0.1.0\" to the spec format"
           - id: omit
             label: "Omit — version tracked only in git tags, not the spec"
-            selected: true
-        comment: "omit — version tracked in git tags only"
+            selected: false
+        comment: "title_convention — embed version in the title"
   - id: scaffolding
     heading: "speckle new — scaffold command"
     dimension: cli
@@ -62,12 +66,13 @@ sections:
         options:
           - id: yes_exit_code
             label: "Yes — exit 0/1, print errors to stderr (shell-friendly)"
+            selected: false
           - id: yes_json
             label: "Yes — output structured JSON errors (tooling-friendly)"
             selected: true
           - id: no
             label: "No — serve validates on startup; separate command is redundant"
-        comment: "yes_json — output structured JSON errors for tooling"
+        comment: "yes_json — keep v0.2.0 JSON output. Round 3 yes_exit_code was misclick."
   - id: history_cli
     heading: History navigation commands
     dimension: history
@@ -104,12 +109,13 @@ sections:
         options:
           - id: per_feature
             label: "Per feature — spec each feature before implementing it"
-            selected: true
+            selected: false
           - id: per_release
             label: "Per release — spec the full release before any implementation"
           - id: hybrid
             label: "Hybrid — release-level spec first, then per-feature rounds for detail"
-        comment: "per_feature — spec each feature before implementing"
+            selected: true
+        comment: "hybrid — release-level spec first, then per-feature rounds for detail"
       - id: proposal_ownership
         prompt: Who proposes spec changes
         options:
@@ -121,3 +127,273 @@ sections:
             label: "Both — either party may propose; /speckle is the gate regardless"
             selected: true
         comment: "both — either party may propose; /speckle is the gate"
+  - id: spec_codes
+    heading: Spec codes — identifiers for dimensions and decisions
+    dimension: format
+    body: |
+      Each dimension and decision currently has a free-form id. Structured codes
+      (e.g. UX-001, ENG-003) would make specs referenceable in commit messages,
+      PRs, and changelogs. Codes could be auto-assigned or manually set.
+    decisions:
+      - id: code_format
+        prompt: Code format
+        options:
+          - id: dim_seq
+            label: "DIM-NNN — dimension prefix + zero-padded sequence (e.g. UX-001)"
+            selected: true
+          - id: free
+            label: "Free-form — keep current id strings, no enforced format"
+          - id: uuid
+            label: "UUID — stable opaque codes, no human meaning"
+        comment: "dim_seq — DIM-NNN prefix + sequence"
+      - id: code_assignment
+        prompt: How codes are assigned
+        options:
+          - id: auto
+            label: "Auto — speckle assigns next available code on patch/commit"
+            selected: true
+          - id: manual
+            label: "Manual — author sets code field in YAML; speckle validates uniqueness"
+          - id: both
+            label: "Both — auto-assign if omitted, allow manual override"
+        comment: "auto — speckle assigns; humans only interact via CLI or Speckler UI"
+      - id: code_scope
+        prompt: What gets a code
+        options:
+          - id: decisions_only
+            label: "Decisions only — each decision gets a code; dimensions use their id"
+          - id: sections_and_decisions
+            label: "Sections + decisions — both get codes"
+          - id: everything
+            label: "Everything — dimensions, sections, decisions, and options all get codes"
+            selected: true
+        comment: "everything — dimensions, sections, decisions, options all get codes"
+  - id: spec_inbox
+    heading: Spec inbox — per-dimension idea queue with LLM integration
+    dimension: llm
+    body: |
+      An inbox lets users drop raw ideas into a dimension without structuring them
+      as decisions. Speckle pipes the inbox text plus the current spec to an LLM,
+      which proposes new sections/decisions or updates existing ones. The agent
+      reviews the proposal and patches the spec.
+    decisions:
+      - id: inbox_location
+        prompt: Where the inbox lives
+        options:
+          - id: in_spec
+            label: "In spec — top-level inbox: field per dimension in the YAML"
+            selected: true
+          - id: sidecar
+            label: "Sidecar — separate <spec>.inbox.yaml file, not committed to history"
+          - id: stdin
+            label: "stdin — user pipes ideas via `speckle inbox <file> <dim-id>`"
+        comment: "in_spec + stdin — top-level inbox field per dimension; also support stdin pipe"
+      - id: llm_integration
+        prompt: How speckle calls the LLM
+        options:
+          - id: subprocess
+            label: "Subprocess — configurable command in .speckle-manifest.json; speckle pipes context to stdin, reads overlay from stdout"
+            selected: false
+          - id: api_key
+            label: "Built-in API — speckle calls Anthropic/OpenAI directly via env var key"
+          - id: agent_only
+            label: "Agent-mediated — speckle emits a prompt on stdout; the calling agent runs the LLM and pipes the result back"
+            selected: true
+        comment: "agent_only — inbox in await JSON; calling agent handles LLM call. Round 3 subprocess was misclick."
+      - id: inbox_trigger
+        prompt: When inbox processing runs
+        options:
+          - id: on_serve
+            label: "On serve — process inbox automatically before starting the server"
+          - id: explicit
+            label: "Explicit — `speckle process-inbox <file>` command; user decides when"
+            selected: true
+          - id: on_submit
+            label: "On submit — process inbox after human submits decisions in browser"
+            selected: true
+        comment: "both explicit and on_submit"
+      - id: inbox_output
+        prompt: What the LLM produces
+        options:
+          - id: overlay
+            label: "YAML overlay — same format as speckle patch input; agent applies it"
+            selected: true
+          - id: new_sections
+            label: "New sections only — LLM appends sections; never modifies existing ones"
+          - id: full_rewrite
+            label: "Full spec rewrite — LLM rewrites the entire spec; human reviews diff"
+        comment: "overlay — YAML overlay format, agent applies via speckle patch"
+  - id: speckler_ui
+    heading: "Speckler — browser UI identity and CLI parity"
+    dimension: format
+    body: |
+      The browser UI shall be called "Speckler". The goal is idiomatic parity:
+      everything visible in Speckler has a CLI equivalent and vice versa.
+      Three interaction modes exist in the UI (see spec_modes section).
+    decisions:
+      - id: ui_name
+        prompt: Official name for the browser UI
+        options:
+          - id: speckler
+            label: "Speckler — distinct name from the CLI tool (speckle)"
+          - id: speckle_ui
+            label: "Speckle UI — same name, qualified"
+            selected: true
+        comment: "speckle_ui — 'Speckle UI', same name qualified"
+      - id: cli_parity
+        prompt: CLI parity scope
+        options:
+          - id: full
+            label: "Full — every Speckler action has a CLI command equivalent"
+            selected: true
+          - id: partial
+            label: "Partial — CLI covers automation paths; Speckler covers interactive paths"
+        comment: "full — every Speckler action has a CLI equivalent"
+  - id: spec_modes
+    heading: "Speckler — three UI interaction modes"
+    dimension: format
+    body: |
+      The Speckler UI has three distinct interaction zones with different edit modes:
+      1. Requirements inbox — raw ideas, entered by user or LLM, edit-first
+      2. Current specifications — settled decisions, read-first (can alter with intent)
+      3. New decisions — pending decisions awaiting human input, edit-first
+      This maps directly to the spec YAML: inbox field, decided sections, open sections.
+    decisions:
+      - id: mode_transitions
+        prompt: How modes are presented in the UI
+        options:
+          - id: tabs
+            label: "Tabs — three tabs at top: Inbox / Specs / Decisions"
+          - id: sections
+            label: "Inline sections — all three zones visible in one scrollable page, visually distinct"
+          - id: sidebar
+            label: "Sidebar — mode selector on left, content area on right"
+            selected: true
+        comment: "sidebar — mode selector on left, content area on right"
+      - id: settled_edit_guard
+        prompt: How to guard editing settled specifications
+        options:
+          - id: click_to_edit
+            label: "Click to edit — settled specs show a lock icon; single click unlocks for edit"
+            selected: true
+          - id: explicit_reopen
+            label: "Explicit reopen — user must run speckle reopen <decision-id> to unseal"
+          - id: free_edit
+            label: "Free edit — no guard; history shows what changed"
+        comment: "click_to_edit — lock icon; single click unlocks"
+  - id: history_ui
+    heading: "Speckler — version history toolbar"
+    dimension: history
+    body: |
+      The browser shows a top toolbar with version history. Selecting an older version
+      shows a read-only view of that spec snapshot. A [Current] button snaps back to
+      the live version. Each version has a timestamp and a short digest summarising
+      what changed. The digest is written by the agent at commit time.
+      This requires a source-of-truth state machine to model correctly.
+    decisions:
+      - id: version_digest_author
+        prompt: Who writes the version digest
+        options:
+          - id: agent
+            label: "Agent — included in speckle commit --digest flag; agent generates from decisions diff"
+            selected: true
+          - id: human
+            label: "Human — free-text field in the commit message; agent prompts but human edits"
+          - id: auto
+            label: "Auto-generated — speckle diffs the spec and generates a summary without LLM"
+        comment: "agent — speckle commit --digest flag; agent generates from decisions diff"
+      - id: history_state_machine
+        prompt: State machine for spec versions
+        options:
+          - id: linear
+            label: "Linear — versions are a single sequence; no branching"
+            selected: true
+          - id: branching
+            label: "Branching — versions can fork (one spec, multiple decision paths)"
+          - id: linear_with_rebase
+            label: "Linear with rebase — linear by default; explicit rebase allowed"
+        comment: "linear — single sequence, no branching"
+      - id: readonly_nav
+        prompt: Read-only view of past versions
+        options:
+          - id: inline_toolbar
+            label: "Inline toolbar — version picker in top bar of Speckler, same page"
+          - id: separate_url
+            label: "Separate URL — /history/<ref> route; [Current] links back to /"
+            selected: true
+        comment: "separate_url — /history/<ref> route; [Current] links back to /"
+  - id: option_generation
+    heading: "Option quality — pros/cons, recommendations, and LLM variants"
+    dimension: llm
+    body: |
+      When speckle (via the agent) proposes options, it should:
+      - Supply pros and cons for each option
+      - Recommend one option based on product and engineering fit
+      - Offer an "Add different option" affordance that triggers the LLM to generate
+        alternatives using a mode selector: hybrid / adjacent / experimental / mix
+      These require new fields in the spec format and new rendering in Speckler.
+    decisions:
+      - id: pros_cons_format
+        prompt: How pros/cons are stored in the spec
+        options:
+          - id: option_fields
+            label: "Fields on option — pros: [list] and cons: [list] fields in the option YAML"
+            selected: true
+          - id: decision_field
+            label: "Field on decision — tradeoffs: markdown block summarising all options"
+          - id: body_convention
+            label: "Convention only — agent writes pros/cons in the option label or body; no schema change"
+        comment: "option_fields — pros: [list] and cons: [list] on each option"
+      - id: recommendation_field
+        prompt: How the recommended option is marked
+        options:
+          - id: flag_field
+            label: "recommended: true field on the option"
+            selected: true
+          - id: decision_field
+            label: "recommended: <option-id> field on the decision"
+          - id: comment_convention
+            label: "Convention — agent notes recommendation in the decision comment"
+        comment: "flag_field — recommended: true on the option"
+      - id: add_different_trigger
+        prompt: How "Add different option" works
+        options:
+          - id: inline_button
+            label: "Speckler button — sends mode + context to agent via inbox; agent patches spec"
+          - id: cli_command
+            label: "CLI — speckle expand <decision-id> --mode hybrid/adjacent/experimental/mix"
+          - id: both
+            label: "Both — Speckler button triggers CLI equivalent under the hood"
+            selected: true
+        comment: "both — Speckler button + speckle expand CLI command"
+  - id: comment_lifecycle
+    heading: Comment lifecycle — ingest and clear
+    dimension: llm
+    body: |
+      Comments on decisions (the comment: field) capture human intent at decision time.
+      They should guide the agent's next revision. Once the agent has ingested a round
+      and patched the spec, comments on decided options should be cleared so they
+      do not pollute future rounds.
+    decisions:
+      - id: comment_clear_timing
+        prompt: When to clear comments
+        options:
+          - id: on_patch
+            label: "On patch — speckle patch clears comment fields for all decided options"
+            selected: true
+          - id: on_next_serve
+            label: "On next serve — comments persist in YAML but hidden in Speckler after ingestion"
+          - id: never_auto
+            label: "Never auto-clear — agent explicitly deletes comments in the overlay"
+        comment: "on_patch — speckle patch clears comment fields for decided options"
+      - id: comment_preservation
+        prompt: Where cleared comments go
+        options:
+          - id: history_only
+            label: "History only — live in .speckle-repo commit body; cleared from spec file"
+            selected: true
+          - id: archive_field
+            label: "Archive field — moved to archived_comment: on the option (hidden in UI)"
+          - id: discard
+            label: "Discard — not preserved after patch; history commit has the record"
+        comment: "history_only — cleared from spec file; preserved in .speckle-repo commit"

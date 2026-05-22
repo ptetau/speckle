@@ -12,11 +12,12 @@ func NewParser() Parser { return &parser{} }
 
 // Spec is the in-memory representation of a .speckle file.
 type Spec struct {
-	Version    int         `yaml:"version" json:"version"`
-	Title      string      `yaml:"title" json:"title"`
-	Dimensions []Dimension `yaml:"dimensions,omitempty" json:"dimensions,omitempty"`
-	Sections   []Section   `yaml:"sections" json:"sections"`
-	Notes      string      `yaml:"notes,omitempty" json:"notes,omitempty"`
+	Version    int               `yaml:"version" json:"version"`
+	Title      string            `yaml:"title" json:"title"`
+	Dimensions []Dimension       `yaml:"dimensions,omitempty" json:"dimensions,omitempty"`
+	Sections   []Section         `yaml:"sections" json:"sections"`
+	Notes      string            `yaml:"notes,omitempty" json:"notes,omitempty"`
+	Inbox      map[string]string `yaml:"inbox,omitempty" json:"inbox,omitempty"`
 }
 
 // Dimension groups sections by concern and gives them a colour in the UI.
@@ -24,6 +25,7 @@ type Dimension struct {
 	ID    string `yaml:"id" json:"id"`
 	Label string `yaml:"label" json:"label"`
 	Color string `yaml:"color" json:"color"`
+	Code  string `yaml:"code,omitempty" json:"code,omitempty"`
 }
 
 type Section struct {
@@ -33,6 +35,7 @@ type Section struct {
 	Dimension string     `yaml:"dimension,omitempty" json:"dimension,omitempty"`
 	Decisions []Decision `yaml:"decisions,omitempty" json:"decisions,omitempty"`
 	Comment   string     `yaml:"comment,omitempty" json:"comment,omitempty"`
+	Code      string     `yaml:"code,omitempty" json:"code,omitempty"`
 }
 
 type Decision struct {
@@ -42,6 +45,7 @@ type Decision struct {
 	Default  string   `yaml:"default,omitempty" json:"default,omitempty"`
 	Selected *string  `yaml:"selected" json:"selected"`
 	Comment  string   `yaml:"comment,omitempty" json:"comment,omitempty"`
+	Code     string   `yaml:"code,omitempty" json:"code,omitempty"`
 }
 
 type Option struct {
@@ -52,6 +56,7 @@ type Option struct {
 	Pros        []string `yaml:"pros,omitempty" json:"pros,omitempty"`
 	Cons        []string `yaml:"cons,omitempty" json:"cons,omitempty"`
 	Recommended bool     `yaml:"recommended,omitempty" json:"recommended,omitempty"`
+	Code        string   `yaml:"code,omitempty" json:"code,omitempty"`
 }
 
 type Preview struct {

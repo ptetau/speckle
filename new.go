@@ -44,6 +44,7 @@ sections:
         default: option-a
         # selected: set by speckle after the human submits; leave null.
         selected: null
+        # code: auto-assigned by speckle patch (e.g. CLI-003). Do not set manually.
 `
 
 func runNew(args []string) error {

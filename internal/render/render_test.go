@@ -39,8 +39,11 @@ func TestRenderEmitsOptionsAndSandboxedPreviews(t *testing.T) {
 	}
 	out := buf.String()
 
-	if !strings.Contains(out, `<title>T</title>`) {
+	if !strings.Contains(out, `Speckle UI`) {
 		t.Errorf("title not rendered: %s", excerpt(out))
+	}
+	if !strings.Contains(out, `T`) {
+		t.Errorf("spec title not rendered: %s", excerpt(out))
 	}
 	if !strings.Contains(out, `Heading`) || !strings.Contains(out, `<strong>prose</strong>`) {
 		t.Errorf("body not markdown-rendered: %s", excerpt(out))

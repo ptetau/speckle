@@ -28,6 +28,10 @@ func main() {
 		err = runLog(os.Args[2:])
 	case "show":
 		err = runShow(os.Args[2:])
+	case "inbox":
+		err = runInbox(os.Args[2:])
+	case "expand":
+		err = runExpand(os.Args[2:])
 	case "-h", "--help", "help":
 		usage()
 		return

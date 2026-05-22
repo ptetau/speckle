@@ -13,11 +13,12 @@ func runCommit(args []string) error {
 	fs := flag.NewFlagSet("commit", flag.ContinueOnError)
 	decisionsPath := fs.String("decisions", "", "path to decisions JSON file to include as sidecar")
 	msgPrefix := fs.String("message", "submit", `commit message prefix ("submit" or "patch")`)
+	digest := fs.String("digest", "", "content digest to embed in commit message body")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if fs.NArg() != 1 {
-		return errors.New("usage: speckle commit [--decisions FILE] [--message MSG] <file.speckle>")
+		return errors.New("usage: speckle commit [--decisions FILE] [--message MSG] [--digest DIGEST] <file.speckle>")
 	}
 
 	mgr, err := history.Open(fs.Arg(0))
@@ -33,7 +34,7 @@ func runCommit(args []string) error {
 		}
 	}
 
-	if err := mgr.Commit(decisions, *msgPrefix); err != nil {
+	if err := mgr.Commit(decisions, *msgPrefix, *digest); err != nil {
 		return err
 	}
 	fmt.Fprintf(os.Stderr, "speckle: committed to %s\n", mgr.RepoPath())

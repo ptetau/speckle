@@ -138,7 +138,7 @@ func TestCommitWritesSpecAndCreatesCommit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := mgr.Commit(nil, "submit"); err != nil {
+	if err := mgr.Commit(nil, "submit", ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -161,7 +161,7 @@ func TestCommitWithDecisionsWritesSidecar(t *testing.T) {
 	}
 
 	decisions := []byte(`{"spec_version":1,"decisions":{"d":{"selected":"a"}}}`)
-	if err := mgr.Commit(decisions, "submit"); err != nil {
+	if err := mgr.Commit(decisions, "submit", ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -186,7 +186,7 @@ func TestCommitMessageContainsDecisions(t *testing.T) {
 	}
 
 	decisions := []byte(`{"spec_version":1,"decisions":{"d":{"selected":"a"}},"notes":"test note"}`)
-	if err := mgr.Commit(decisions, "submit"); err != nil {
+	if err := mgr.Commit(decisions, "submit", ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -213,10 +213,10 @@ func TestCommitTwiceProducesTwoCommits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := mgr.Commit(nil, "submit"); err != nil {
+	if err := mgr.Commit(nil, "submit", ""); err != nil {
 		t.Fatal(err)
 	}
-	if err := mgr.Commit(nil, "patch"); err != nil {
+	if err := mgr.Commit(nil, "patch", ""); err != nil {
 		t.Fatal(err)
 	}
 	assertCommitCount(t, mgr.RepoPath(), 2)
@@ -293,11 +293,11 @@ func TestLogReturnsOneEntryPerCommit(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := mgr.Commit(nil, "patch"); err != nil {
+	if err := mgr.Commit(nil, "patch", ""); err != nil {
 		t.Fatal(err)
 	}
 	decisions := []byte(`{"spec_version":1,"decisions":{"d":{"selected":"a"}}}`)
-	if err := mgr.Commit(decisions, "submit"); err != nil {
+	if err := mgr.Commit(decisions, "submit", ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -329,7 +329,7 @@ func TestLogEntryFields(t *testing.T) {
 	}
 
 	decisions := []byte(`{"spec_version":1,"decisions":{"d":{"selected":"a"}}}`)
-	if err := mgr.Commit(decisions, "submit"); err != nil {
+	if err := mgr.Commit(decisions, "submit", ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -368,7 +368,7 @@ func TestShowReturnsSpecAtRef(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := mgr.Commit(nil, "submit"); err != nil {
+	if err := mgr.Commit(nil, "submit", ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -406,7 +406,7 @@ func TestShowReturnsDecisionsWhenSidecar(t *testing.T) {
 	}
 
 	decisions := []byte(`{"spec_version":1,"decisions":{"d":{"selected":"a"}}}`)
-	if err := mgr.Commit(decisions, "submit"); err != nil {
+	if err := mgr.Commit(decisions, "submit", ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -438,7 +438,7 @@ func TestShowNoDecisionsWhenNoSidecar(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := mgr.Commit(nil, "patch"); err != nil {
+	if err := mgr.Commit(nil, "patch", ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -467,12 +467,62 @@ func TestShowInvalidRefReturnsError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := mgr.Commit(nil, "submit"); err != nil {
+	if err := mgr.Commit(nil, "submit", ""); err != nil {
 		t.Fatal(err)
 	}
 
 	_, err = mgr.Show("deadbeef123")
 	if err == nil {
 		t.Fatal("expected error for nonexistent ref, got nil")
+	}
+}
+
+func TestCommitDigestAppearsInLog(t *testing.T) {
+	requireGit(t)
+	dir := t.TempDir()
+	specPath := writeSpec(t, dir)
+
+	mgr, err := history.Open(specPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.Commit(nil, "submit", "sha256:abc123"); err != nil {
+		t.Fatal(err)
+	}
+
+	entries, err := mgr.Log()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) == 0 {
+		t.Fatal("expected at least one log entry")
+	}
+	if entries[0].Digest != "sha256:abc123" {
+		t.Errorf("expected digest sha256:abc123, got %q", entries[0].Digest)
+	}
+}
+
+func TestCommitNoDigestEmptyInLog(t *testing.T) {
+	requireGit(t)
+	dir := t.TempDir()
+	specPath := writeSpec(t, dir)
+
+	mgr, err := history.Open(specPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.Commit(nil, "submit", ""); err != nil {
+		t.Fatal(err)
+	}
+
+	entries, err := mgr.Log()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) == 0 {
+		t.Fatal("expected at least one log entry")
+	}
+	if entries[0].Digest != "" {
+		t.Errorf("expected empty digest, got %q", entries[0].Digest)
 	}
 }

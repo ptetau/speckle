@@ -12,6 +12,7 @@ type Submission struct {
 	Decisions       map[string]DecisionAnswer `json:"decisions"`
 	SectionComments map[string]string         `json:"section_comments,omitempty"`
 	Notes           string                    `json:"notes,omitempty"`
+	Inbox           map[string]string         `json:"inbox,omitempty"`
 }
 
 type DecisionAnswer struct {
